@@ -30,6 +30,27 @@ TEST_F(LexerTest, LexWhite_GivesEOF)
 	AssertEqualTokens(PrimativeToken::EndOfFile, lexer.TokenizeNext());
 }
 
+TEST_F(LexerTest, LexComma_GivesComma)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>(",");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Comma, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexColon_GivesColon)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>(":");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Colon, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexSemi_GivesSemi)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>(";");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Semi, lexer.TokenizeNext());
+}
+
 TEST_F(LexerTest, LexOpenParen_GivesLParen)
 {
 	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("(");
@@ -42,6 +63,41 @@ TEST_F(LexerTest, LexCloseParen_GivesRParen)
 	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>(")");
 	Lexer lexer(std::move(inStream));
 	AssertEqualTokens(PrimativeToken::RParen, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexOpenBracket_GivesLBracket)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("[");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::LBracket, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexCloseBracket_GivesRBracket)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("]");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::RBracket, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexOpenBrace_GivesLBrace)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("{");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::LBrace, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexCloseBrace_GivesRBrace)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("}");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::RBrace, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexPeriod_GivesPeriod)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>(".");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Period, lexer.TokenizeNext());
 }
 
 TEST_F(LexerTest, LexPlus_GivesPlus)
@@ -65,11 +121,32 @@ TEST_F(LexerTest, LexTimes_GivesTimes)
 	AssertEqualTokens(PrimativeToken::Times, lexer.TokenizeNext());
 }
 
+TEST_F(LexerTest, LexDiv_GivesDiv)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("/");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Div, lexer.TokenizeNext());
+}
+
 TEST_F(LexerTest, LexEquals_GivesEquals)
 {
 	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("=");
 	Lexer lexer(std::move(inStream));
 	AssertEqualTokens(PrimativeToken::Equal, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexNotEqual_GivesNotEqual)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("<>");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::NotEqual, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexLessThan_GivesLessThan)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("<");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::LessThan, lexer.TokenizeNext());
 }
 
 TEST_F(LexerTest, LexLEquals_GivesLEquals)
@@ -79,11 +156,18 @@ TEST_F(LexerTest, LexLEquals_GivesLEquals)
 	AssertEqualTokens(PrimativeToken::LEqual, lexer.TokenizeNext());
 }
 
-TEST_F(LexerTest, LexNot_GivesNot)
+TEST_F(LexerTest, LexGreaterThan_GivesGreaterThan)
 {
-	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("!");
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>(">");
 	Lexer lexer(std::move(inStream));
-	AssertEqualTokens(PrimativeToken::Not, lexer.TokenizeNext());
+	AssertEqualTokens(PrimativeToken::GreaterThan, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexGEqual_GivesGEqual)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>(">=");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::GEqual, lexer.TokenizeNext());
 }
 
 TEST_F(LexerTest, LexAnd_GivesAnd)
@@ -125,27 +209,6 @@ TEST_F(LexerTest, ChainSingleCharOps_ManySpace)
 	AssertEqualTokens(PrimativeToken::EndOfFile, lexer.TokenizeNext());
 }
 
-TEST_F(LexerTest, LexSkip_GivesSkip)
-{
-	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("skip");
-	Lexer lexer(std::move(inStream));
-	AssertEqualTokens(PrimativeToken::Skip, lexer.TokenizeNext());
-}
-
-TEST_F(LexerTest, LexTrue_GivesTrue)
-{
-	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("true");
-	Lexer lexer(std::move(inStream));
-	AssertEqualTokens(PrimativeToken::True, lexer.TokenizeNext());
-}
-
-TEST_F(LexerTest, LexFalse_GivesFalse)
-{
-	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("false");
-	Lexer lexer(std::move(inStream));
-	AssertEqualTokens(PrimativeToken::False, lexer.TokenizeNext());
-}
-
 TEST_F(LexerTest, LexIf_GivesIf)
 {
 	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("if");
@@ -172,6 +235,104 @@ TEST_F(LexerTest, LexWhile_GivesWhile)
 	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("while");
 	Lexer lexer(std::move(inStream));
 	AssertEqualTokens(PrimativeToken::While, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexFor_GivesFor)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("for");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::For, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexTo_GivesTo)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("to");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::To, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexDo_GivesDo)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("do");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Do, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexLet_GivesLet)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("let");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Let, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexIn_GivesIn)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("in");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::In, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexEnd_GivesEnd)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("end");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::End, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexOf_GivesOf)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("of");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Of, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexBreak_GivesBreak)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("break");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Break, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexNil_GivesNil)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("nil");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Nil, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexFunction_GivesFunction)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("function");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Function, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexVar_GivesVar)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("var");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Var, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexType_GivesType)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("type");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Type, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexImport_GivesImport)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("import");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Import, lexer.TokenizeNext());
+}
+
+TEST_F(LexerTest, LexPrimative_GivesPrimative)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("primative");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Primative, lexer.TokenizeNext());
 }
 
 TEST_F(LexerTest, LexLongNumber_GivesNumber)
@@ -201,26 +362,58 @@ TEST_F(LexerTest, LexNegNumber_GivesNumber)
 	ASSERT_STREQ("-108", token.UseValue().c_str());
 }
 
+
+TEST_F(LexerTest, LexSuperSimpleComment_Success)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("/**/");
+	Lexer lexer(std::move(inStream));
+	Token token = lexer.TokenizeNext();
+	AssertEqualTokens(PrimativeToken::EndOfFile, token);
+}
+
+TEST_F(LexerTest, LexSimpleCommentUnclosed_Throws)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("  /* foo bar");
+	Lexer lexer(std::move(inStream));
+	ASSERT_THROW(lexer.TokenizeNext(), LexException);
+}
+
+TEST_F(LexerTest, LexSimpleComment_Success)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("  /* foo bar */");
+	Lexer lexer(std::move(inStream));
+	Token token = lexer.TokenizeNext();
+	AssertEqualTokens(PrimativeToken::EndOfFile, token);
+}
+
+TEST_F(LexerTest, LexNestedComment_Success)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("/* foo /* bar */ baz */");
+	Lexer lexer(std::move(inStream));
+	Token token = lexer.TokenizeNext();
+	AssertEqualTokens(PrimativeToken::EndOfFile, token);
+}
+
 TEST_F(LexerTest, LexAFullThing)
 {
-	std::string program("if foo + 108 = x \nthen foo := x  else\n bar:=b-c*10          ");
+	std::string program(" if foo + 108 = x \nthen /* A comment /* that is nested */ */  foo := x  else\n bar:=b-c*10          ");
 	std::vector<Token> expectedTokens;
 	expectedTokens.push_back(Token(PrimativeToken::If));
-	expectedTokens.push_back(Token(PrimativeToken::Location, "foo"));
+	expectedTokens.push_back(Token(PrimativeToken::Identifier, "foo"));
 	expectedTokens.push_back(Token(PrimativeToken::Plus));
 	expectedTokens.push_back(Token(PrimativeToken::Number, "108"));
 	expectedTokens.push_back(Token(PrimativeToken::Equal));
-	expectedTokens.push_back(Token(PrimativeToken::Location, "x"));
+	expectedTokens.push_back(Token(PrimativeToken::Identifier, "x"));
 	expectedTokens.push_back(Token(PrimativeToken::Then));
-	expectedTokens.push_back(Token(PrimativeToken::Location, "foo"));
+	expectedTokens.push_back(Token(PrimativeToken::Identifier, "foo"));
 	expectedTokens.push_back(Token(PrimativeToken::Assign));
-	expectedTokens.push_back(Token(PrimativeToken::Location, "x"));
+	expectedTokens.push_back(Token(PrimativeToken::Identifier, "x"));
 	expectedTokens.push_back(Token(PrimativeToken::Else));
-	expectedTokens.push_back(Token(PrimativeToken::Location, "bar"));
+	expectedTokens.push_back(Token(PrimativeToken::Identifier, "bar"));
 	expectedTokens.push_back(Token(PrimativeToken::Assign));
-	expectedTokens.push_back(Token(PrimativeToken::Location, "b"));
+	expectedTokens.push_back(Token(PrimativeToken::Identifier, "b"));
 	expectedTokens.push_back(Token(PrimativeToken::Minus));
-	expectedTokens.push_back(Token(PrimativeToken::Location, "c"));
+	expectedTokens.push_back(Token(PrimativeToken::Identifier, "c"));
 	expectedTokens.push_back(Token(PrimativeToken::Times));
 	expectedTokens.push_back(Token(PrimativeToken::Number, "10"));
 	expectedTokens.push_back(Token(PrimativeToken::EndOfFile));

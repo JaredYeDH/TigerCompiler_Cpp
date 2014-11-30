@@ -33,7 +33,7 @@ void Token::ThrowIfInproperInit() throw(TokenException)
 	switch(m_type)
 	{
 	case PrimativeToken::Number:
-	case PrimativeToken::Location:
+	case PrimativeToken::Identifier:
 		if (!HasValue())
 		{
 			throw TokenException();

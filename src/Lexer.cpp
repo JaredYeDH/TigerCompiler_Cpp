@@ -8,10 +8,10 @@ Lexer::Lexer(std::unique_ptr<std::istream>&& stream)
 
 Token Lexer::TokenizeNext()
 {
-	TrashLeadingWhiteSpace();
+	TrashLeadingWhiteSpaceAndComments();
 
 	char first = m_stream->get();
-	if (m_stream->gcount() == 0 || !HasMoreToLex())
+	if (m_stream->gcount() == 0)
 	{
 		return Token(PrimativeToken::EndOfFile);
 	}
@@ -25,24 +25,13 @@ Token Lexer::TokenizeNext()
 		return TokenizeNumber(first);
 	}
 	
-	return TokenizeKeywordOrLocation(first);
+	return TokenizeKeywordOrIdentifier(first);
 }
 
-Token Lexer::TokenizeKeywordOrLocation(char first)
+Token Lexer::TokenizeKeywordOrIdentifier(char first)
 {
 	std::string tokenStr = GetStringUntilPredicateNoLongerApplies(first, [](char c) { return isalnum(c);});
-	if (tokenStr == "skip")
-	{
-		return Token(PrimativeToken::Skip);
-	}
-	if (tokenStr == "true")
-	{
-		return Token(PrimativeToken::True);
-	}
-	if (tokenStr == "false")
-	{
-		return Token(PrimativeToken::False);
-	}
+	
 	if (tokenStr == "if")
 	{
 		return Token(PrimativeToken::If);
@@ -59,8 +48,64 @@ Token Lexer::TokenizeKeywordOrLocation(char first)
 	{
 		return Token(PrimativeToken::While);
 	}
-	
-	return Token(PrimativeToken::Location, tokenStr);
+	if (tokenStr == "for")
+	{
+		return Token(PrimativeToken::For);
+	}
+	if (tokenStr == "to")
+	{
+		return Token(PrimativeToken::To);
+	}
+	if (tokenStr == "do")
+	{
+		return Token(PrimativeToken::Do);
+	}
+	if (tokenStr == "let")
+	{
+		return Token(PrimativeToken::Let);
+	}
+	if (tokenStr == "in")
+	{
+		return Token(PrimativeToken::In);
+	}
+	if (tokenStr == "end")
+	{
+		return Token(PrimativeToken::End);
+	}
+	if (tokenStr == "of")
+	{
+		return Token(PrimativeToken::Of);
+	}
+	if (tokenStr == "break")
+	{
+		return Token(PrimativeToken::Break);
+	}
+	if (tokenStr == "nil")
+	{
+		return Token(PrimativeToken::Nil);
+	}
+	if (tokenStr == "function")
+	{
+		return Token(PrimativeToken::Function);
+	}
+	if (tokenStr == "var")
+	{
+		return Token(PrimativeToken::Var);
+	}
+	if (tokenStr == "type")
+	{
+		return Token(PrimativeToken::Type);
+	}
+	if (tokenStr == "import")
+	{
+		return Token(PrimativeToken::Import);
+	}
+	if (tokenStr == "primative")
+	{
+		return Token(PrimativeToken::Primative);
+	}
+
+	return Token(PrimativeToken::Identifier, tokenStr);
 }
 
 Token Lexer::TokenizeNumber(char first)
@@ -74,10 +119,32 @@ Token Lexer::TokenizeOperatorOrNegNumber(char first)
 	char next;
 	switch (first)
 	{
+	case (','):
+		return Token(PrimativeToken::Comma);
+	case (':'):
+		next = m_stream->peek();
+		if (next == '=')
+		{
+			m_stream->get();
+			return Token(PrimativeToken::Assign);
+		}
+		return Token(PrimativeToken::Colon);
+	case (';'):
+		return Token(PrimativeToken::Semi);
 	case ('('):
 		return Token(PrimativeToken::LParen);
 	case (')'):
 		return Token(PrimativeToken::RParen);
+	case ('['):
+		return Token(PrimativeToken::LBracket);
+	case (']'):
+		return Token(PrimativeToken::RBracket);
+	case ('{'):
+		return Token(PrimativeToken::LBrace);
+	case ('}'):
+		return Token(PrimativeToken::RBrace);
+	case ('.'):
+		return Token(PrimativeToken::Period);
 	case ('+'):
 		return Token(PrimativeToken::Plus);
 	case ('-'):
@@ -91,39 +158,123 @@ Token Lexer::TokenizeOperatorOrNegNumber(char first)
 		return Token(PrimativeToken::Minus);
 	case ('*'):
 		return Token(PrimativeToken::Times);
+	case ('/'):
+		return Token(PrimativeToken::Div);
 	case ('='):
 		return Token(PrimativeToken::Equal);
 	case ('<'):
 		next = m_stream->peek();
-		if (next != '=')
+		if (next == '=')
 		{
-			throw LexException("Invalid use of '<'. Expected Less then or equal <= ");
+			m_stream->get();
+			return Token(PrimativeToken::LEqual);
 		}
-		m_stream->get();
-		return Token(PrimativeToken::LEqual);
-	case ('!'):
-		return Token(PrimativeToken::Not);
+		if (next == '>')
+		{
+			m_stream->get();
+			return Token(PrimativeToken::NotEqual);
+		}
+		return Token(PrimativeToken::LessThan);
+	case ('>'):
+		next = m_stream->peek();
+		if (next == '=')
+		{
+			m_stream->get();
+			return Token(PrimativeToken::GEqual);
+		}
+		return Token(PrimativeToken::GreaterThan);
 	case ('&'):
 		return Token(PrimativeToken::And);
 	case ('|'):
 		return Token(PrimativeToken::Or);
-	case (':'):
-		next = m_stream->peek();
-		if (next != '=')
-		{
-			throw LexException("Invalid use of ':'. Expected assignment := ");
-		}
-		m_stream->get();
-		return Token(PrimativeToken::Assign);
 	}
 
 	throw LexException("Invalid character encountered while attempting to tokenize operator!");
 }
 
-
-void Lexer::TrashLeadingWhiteSpace()
+void Lexer::TrashLeadingWhiteSpaceAndComments()
 {
-	GetStringUntilPredicateNoLongerApplies(' ', [](char c) { return isspace(c); });
+	bool somethingWasTrashed = false;
+	while (true)
+	{
+		somethingWasTrashed = GetStringUntilPredicateNoLongerApplies(' ', [](char c) { return isspace(c); }).length() > 1;
+		somethingWasTrashed |= TryTrashComment();
+		if (!somethingWasTrashed)
+		{
+			return;
+		}
+	}
+}
+
+bool Lexer::TryTrashComment()
+{
+	int depth = TryTrashStartOfComment() ? 1 : 0;
+
+	if (depth == 0)
+	{
+		return false;
+	}
+
+	while (depth > 0 && HasMoreToLex())
+	{
+		if (TryTrashStartOfComment())
+		{
+			depth++;
+		}
+
+		if (TryTrashEndOfComment())
+		{
+			depth--;
+		}
+		else
+		{
+			m_stream->get();
+		}
+	}
+
+	if (depth > 0)
+	{
+		throw LexException("Un-closed comment");
+	}
+	return true;
+}
+
+bool Lexer::TryTrashStartOfComment()
+{
+	if (m_stream->peek() == '/')
+	{
+		m_stream->get();
+		if (m_stream->peek() != '*')
+		{
+			m_stream->unget();
+			return false;
+		}
+		else
+		{
+			m_stream->get();
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Lexer::TryTrashEndOfComment()
+{
+	if (m_stream->peek() == '*')
+	{
+		m_stream->get();
+		if (m_stream->peek() != '/')
+		{
+			m_stream->unget();
+			return false;
+		}
+		else
+		{
+			m_stream->get();
+			return true;
+		}
+	}
+	return false;
 }
 
 bool Lexer::HasMoreToLex()
@@ -133,7 +284,7 @@ bool Lexer::HasMoreToLex()
 
 bool Lexer::ShouldTryTokenizeOperator(char first)
 {
-	std::string validOps("()+-*=<!&|:");
+	std::string validOps(",:;()[]{}.+-*/=<>&|");
 	return validOps.find(first) != std::string::npos;
 }
 

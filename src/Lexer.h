@@ -31,13 +31,19 @@ public:
 private:
 	std::unique_ptr<std::istream> m_stream;
 
-    void TrashLeadingWhiteSpace();
+    void TrashLeadingWhiteSpaceAndComments();
+
+    bool TryTrashComment();
+
+    bool TryTrashStartOfComment();
+
+    bool TryTrashEndOfComment();
 
     Token TokenizeOperatorOrNegNumber(char first);
 
     Token TokenizeNumber(char first);
 
-    Token TokenizeKeywordOrLocation(char first);
+    Token TokenizeKeywordOrIdentifier(char first);
 
     std::string GetStringUntilPredicateNoLongerApplies(char first, std::function<bool(char)>&& pred);
 

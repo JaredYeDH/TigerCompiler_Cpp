@@ -12,29 +12,55 @@ class TokenException : public std::exception
 
 enum class PrimativeToken : unsigned int 
 {
+    // symbols
     EndOfFile,
+    Comma,
+    Colon,
+    Semi,
     LParen,
     RParen,
+    LBracket,
+    RBracket,
+    LBrace,
+    RBrace,
+    Period,
     Plus,
     Minus,
     Times,
+    Div,
     Equal,
+    NotEqual,
+    LessThan,
     LEqual,
-    Not,
+    GreaterThan,
+    GEqual,
     And,
     Or,
     Assign,
 
-    Skip,
-    True,
-    False,
+    // Keywords
     If,
     Then,
     Else,
     While,
-    
+    For,
+    To,
+    Do,
+    Let,
+    In,
+    End,
+    Of,
+    Break,
+    Nil,
+    Function,
+    Var,
+    Type,
+    Import,
+    Primative,
+
+    // Ids and numbers    
     Number,
-    Location
+    Identifier
 };
 
 class Token
