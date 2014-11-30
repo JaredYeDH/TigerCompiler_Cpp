@@ -34,7 +34,7 @@ Token Lexer::TokenizeNext()
 
 Token Lexer::TokenizeKeywordOrIdentifier(char first)
 {
-	std::string tokenStr = GetStringUntilPredicateNoLongerApplies(first, [](char c) { return isalnum(c);});
+	std::string tokenStr = GetStringUntilPredicateNoLongerApplies(first, [](char c) { return isalnum(c) || c == '_';});
 	
 	if (tokenStr == "if")
 	{

@@ -402,6 +402,22 @@ TEST_F(LexerTest, LexNestedComment_Success)
 	AssertEqualTokens(PrimativeToken::EndOfFile, token);
 }
 
+TEST_F(LexerTest, LexIdSimple_Success)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("foo");
+	Lexer lexer(std::move(inStream));
+	Token token = lexer.TokenizeNext();
+	AssertEqualTokens(Token(PrimativeToken::Identifier, "foo"), token);
+}
+
+TEST_F(LexerTest, LexIdUnderscore_Success)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("_foo_bar");
+	Lexer lexer(std::move(inStream));
+	Token token = lexer.TokenizeNext();
+	AssertEqualTokens(Token(PrimativeToken::Identifier, "_foo_bar"), token);
+}
+
 TEST_F(LexerTest, LexAFullThing)
 {
 	std::string program(" if foo + 108 = x \n\rthen /* \r A comment \r\n /* that is nested */ */  foo := x  else\n bar:=b-c*10          ");
