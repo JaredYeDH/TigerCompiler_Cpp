@@ -24,6 +24,10 @@ Token Lexer::TokenizeNext()
 	{
 		return TokenizeNumber(first);
 	}
+	else if (first == '"')
+	{
+		return TokenizeString();
+	}
 	
 	return TokenizeKeywordOrIdentifier(first);
 }
@@ -190,6 +194,14 @@ Token Lexer::TokenizeOperatorOrNegNumber(char first)
 	}
 
 	throw LexException("Invalid character encountered while attempting to tokenize operator!");
+}
+
+Token Lexer::TokenizeString()
+{
+	std::string value = GetStringUntilPredicateNoLongerApplies(' ' , [](char c) { return c != '"'; });
+	// Trash closing quote
+	m_stream->get();
+	return Token(PrimativeToken::StringLit, value.substr(1, value.length()));
 }
 
 void Lexer::TrashLeadingWhiteSpaceAndComments()

@@ -9,12 +9,14 @@ TEST_F(TokensTest, MakeFromPrimThatNeedsValue_ThrowsNeedsValue_ExhaustiveFail)
 {
 	ASSERT_THROW(Token{ PrimativeToken::Number }, TokenException);
 	ASSERT_THROW(Token{ PrimativeToken::Identifier }, TokenException);
+	ASSERT_THROW(Token{ PrimativeToken::StringLit }, TokenException);
 }
 
 TEST_F(TokensTest, MakeFromPrimThatNeedsValue_Value_ExhaustivePass) 
 {
 	ASSERT_NO_THROW( Token(PrimativeToken::Number, "1") );
 	ASSERT_NO_THROW( Token(PrimativeToken::Identifier, "a") );
+	ASSERT_NO_THROW( Token(PrimativeToken::StringLit, "a") );
 } 
 
 TEST_F(TokensTest, MakeFromPrimThatNeedsNoValue_NoValue_ExhaustivePass) 

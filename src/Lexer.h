@@ -45,6 +45,8 @@ private:
 
     Token TokenizeKeywordOrIdentifier(char first);
 
+    Token TokenizeString();
+
     std::string GetStringUntilPredicateNoLongerApplies(char first, std::function<bool(char)>&& pred);
 
     bool ShouldTryTokenizeOperator(char first);

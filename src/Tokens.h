@@ -58,9 +58,10 @@ enum class PrimativeToken : unsigned int
     Import,
     Primative,
 
-    // Ids and numbers    
+    // Things with values   
     Number,
-    Identifier
+    Identifier,
+    StringLit
 };
 
 class Token

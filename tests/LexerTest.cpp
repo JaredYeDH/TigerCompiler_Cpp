@@ -362,6 +362,14 @@ TEST_F(LexerTest, LexNegNumber_GivesNumber)
 	ASSERT_STREQ("-108", token.UseValue().c_str());
 }
 
+TEST_F(LexerTest, LexString_String)
+{
+	std::string strVal("\"This is \t a string\"");
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>(strVal);
+	Lexer lexer(std::move(inStream));
+	Token token = lexer.TokenizeNext();
+	AssertEqualTokens(Token(PrimativeToken::StringLit, "This is \t a string"), token);
+}
 
 TEST_F(LexerTest, LexSuperSimpleComment_Success)
 {
@@ -396,7 +404,7 @@ TEST_F(LexerTest, LexNestedComment_Success)
 
 TEST_F(LexerTest, LexAFullThing)
 {
-	std::string program(" if foo + 108 = x \nthen /* A comment /* that is nested */ */  foo := x  else\n bar:=b-c*10          ");
+	std::string program(" if foo + 108 = x \n\rthen /* \r A comment \r\n /* that is nested */ */  foo := x  else\n bar:=b-c*10          ");
 	std::vector<Token> expectedTokens;
 	expectedTokens.push_back(Token(PrimativeToken::If));
 	expectedTokens.push_back(Token(PrimativeToken::Identifier, "foo"));

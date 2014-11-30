@@ -34,6 +34,7 @@ void Token::ThrowIfInproperInit() throw(TokenException)
 	{
 	case PrimativeToken::Number:
 	case PrimativeToken::Identifier:
+	case PrimativeToken::StringLit:
 		if (!HasValue())
 		{
 			throw TokenException();
