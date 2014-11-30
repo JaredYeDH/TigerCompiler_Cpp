@@ -18,3 +18,5 @@ enable_testing()
 add_test(test
         tests/AllTests)
 
+add_custom_target(loop
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/LoopBuild.sh)

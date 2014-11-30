@@ -1,5 +1,10 @@
-add_library( Calc
-    Calc.cpp
+add_library( AST
+    AST.cpp
+)
+
+add_library( Lexer
+	Tokens.cpp
+    Lexer.cpp
 )
 
 add_executable( Main
@@ -7,6 +12,12 @@ add_executable( Main
 )
 
 target_link_libraries( Main
-    Calc
+    AST
+    Lexer
     ${Boost_LIBRARIES}
 )
+
+add_custom_command(
+     TARGET Main
+     POST_BUILD
+     COMMAND AllTests)
