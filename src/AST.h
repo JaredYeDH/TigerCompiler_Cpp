@@ -1,122 +1,207 @@
 #pragma once
 #include <memory>
 #include <string>
-using namespace std;
+#include <vector>
+#include <unordered_map>
 
 namespace AST
 {
-typedef std::string Location;
+typedef std::string Symbol;
 
-struct ArithmeticExpression {};
+enum class BinOp : unsigned int
+{
+   Plus,
+   Minus,
+   Times,
+   Div,
+   Eq,
+   Neq,
+   Lt,
+   Le,
+   Gt,
+   Ge 
+};
 
-struct NumericExpression
-    : public ArithmeticExpression
+struct Feild
+{
+    Symbol name;
+    bool escape;
+    Symbol type;
+};
+
+struct FunDec
+{
+    Symbol name;
+    std::vector<Feild> fields;
+    Symbol result;
+};
+
+struct Var {};
+struct Expression {};
+struct Declaration {};
+struct Type {};
+
+struct SimpleVar
+    : public Var
+{
+    Symbol symbol;
+};
+
+struct FieldVar
+    : public Var
+{
+    Symbol symbol;
+    std::unique_ptr<Var> var;
+};
+
+struct SubscriptVar
+    : public Var
+{
+    std::unique_ptr<Var> var;
+    std::unique_ptr<Expression> expression; 
+};
+
+struct VarExpression
+    : public Expression
+{
+    std::unique_ptr<Var> var;
+};
+
+struct NilExpression
+    : public Expression
+{
+};
+
+struct IntExpression
+    : public Expression
 {
     int value;
 };
 
-struct LocationExpession
-    : public ArithmeticExpression
+struct StringExpression
+    : public Expression
 {
-    std::unique_ptr<Location> location;
+    std::string value;
 };
 
-struct AdditionExpression
-    : public ArithmeticExpression
+struct CallExpression
+    : public Expression
 {
-    std::unique_ptr<ArithmeticExpression> lhs;
-    std::unique_ptr<ArithmeticExpression> rhs;
+    Symbol function;
+    std::vector<std::unique_ptr<Expression>> args;
 };
 
-struct SubtractionExpression
-    : public ArithmeticExpression
+struct OpExpression
+    : public Expression
 {
-    std::unique_ptr<ArithmeticExpression> lhs;
-    std::unique_ptr<ArithmeticExpression> rhs;
+    std::unique_ptr<Expression> lhs;
+    std::unique_ptr<Expression> rhs;
+    BinOp op;
 };
 
-struct MultiplicationExpression
-    : public ArithmeticExpression
+struct RecordExpression
+    : public Expression
 {
-    std::unique_ptr<ArithmeticExpression> lhs;
-    std::unique_ptr<ArithmeticExpression> rhs;
+    Symbol type;
+    std::unordered_map<Symbol, std::unique_ptr<Expression>> fields;
 };
 
-struct BooleanExpression {};
-
-struct TruthPrimativeExpression
-    : public BooleanExpression
+struct SeqExpression
+    : public Expression
 {
-    bool value;
+    std::vector<std::unique_ptr<Expression>> expressions;
 };
 
-struct EqualExpression
-    : BooleanExpression
+struct AssignmentExpression
+    : public Expression
 {
-    std::unique_ptr<ArithmeticExpression> lhs;
-    std::unique_ptr<ArithmeticExpression> rhs;
+    std::unique_ptr<Var> var;
+    std::unique_ptr<Expression> expression;
 };
 
-struct LessThanOrEqualExpression
-    : BooleanExpression
+struct IfExpression
+    : public Expression
 {
-    std::unique_ptr<ArithmeticExpression> lhs;
-    std::unique_ptr<ArithmeticExpression> rhs;
+    std::unique_ptr<Expression> test;
+    std::unique_ptr<Expression> thenBranch;
+    std::unique_ptr<Expression> elseBranch;
 };
 
-struct NotExpression
-    : BooleanExpression
+struct WhileExpression
+    : public Expression
 {
-    std::unique_ptr<BooleanExpression> lhs;
+    std::unique_ptr<Expression> test;
+    std::unique_ptr<Expression> body;
 };
 
-struct AndExpression
-    : BooleanExpression
+struct ForExpression
+    : public Expression
 {
-    std::unique_ptr<BooleanExpression> lhs;
-    std::unique_ptr<BooleanExpression> rhs;
+    std::unique_ptr<Symbol> var;
+    bool escape;
+    std::unique_ptr<Expression> low;
+    std::unique_ptr<Expression> high;
+    std::unique_ptr<Expression> body;
 };
 
-struct OrThanOrEqualExpression
-    : BooleanExpression
-{
-    std::unique_ptr<BooleanExpression> lhs;
-    std::unique_ptr<BooleanExpression> rhs;
-};
-
-struct Command {};
-
-struct SkipCommand
-    : Command
+struct BreakExpression
+    : public Expression
 {
 };
 
-struct AssignCommand
-    : Command
+struct LetExpression
+    : public Expression
 {
-    std::unique_ptr<Location> location;
-    std::unique_ptr<ArithmeticExpression> rhs;
+    std::vector<Declaration> decls;
+    std::unique_ptr<Expression> body;
 };
 
-struct SequenceCommand
-    : Command
+struct ArrayExpression
+    : public Expression
 {
-    std::unique_ptr<Command> lhs;
-    std::unique_ptr<Command> rhs;
+    Symbol type;
+    std::unique_ptr<Expression> size;
+    std::unique_ptr<Expression> init;
 };
 
-struct IfCommand
-    : Command
+struct FunctionDeclaration
+    : public Declaration
 {
-    std::unique_ptr<BooleanExpression> condition;
-    std::unique_ptr<Command> lhs;
-    std::unique_ptr<Command> rhs;
+    std::vector<FunDec> v;
 };
 
-struct WhileCommand
-    : Command
+struct VarDeclaration
+    : public Declaration
 {
-    std::unique_ptr<BooleanExpression> condition;
-    std::unique_ptr<Command> command;
+   Symbol name;
+   bool escape;
+   Symbol type;
+   std::unique_ptr<Expression> init; 
 };
+
+struct TypeDeclaration
+    : public Declaration
+{
+    Symbol name;
+    std::unique_ptr<Type> type;
+};
+
+struct NameType
+    : public Type
+{
+    Symbol name;
+};
+
+struct RecordType
+    : public Type
+{
+    std::vector<Feild> fields;
+};
+
+struct ArrayType
+    : public Type
+{
+    Symbol name;
+};
+
 }
