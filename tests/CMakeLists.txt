@@ -5,7 +5,10 @@ include_directories( ${gtest_SOURCE_DIR}/include)
 set( test_sources 
     ASTTest.cpp 
     TokensTest.cpp
-    LexerTest.cpp)
+    TokenStreamTest.cpp
+    LexerTest.cpp
+    ParserTest.cpp
+)
 
 add_executable( AllTests
     ${test_sources})
@@ -13,10 +16,12 @@ add_executable( AllTests
 target_link_libraries( AllTests
     AST
     Lexer
+    Parser
     gtest_main
 )
 
 add_custom_command(
     TARGET AllTests
     POST_BUILD
-    COMMAND AllTests)
+    COMMAND AllTests
+)

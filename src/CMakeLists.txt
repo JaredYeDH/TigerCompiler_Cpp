@@ -4,7 +4,12 @@ add_library( AST
 
 add_library( Lexer
 	Tokens.cpp
+    TokenStream.cpp
     Lexer.cpp
+)
+
+add_library ( Parser
+    Parser.cpp
 )
 
 add_executable( Main
@@ -14,10 +19,12 @@ add_executable( Main
 target_link_libraries( Main
     AST
     Lexer
+    Parser
     ${Boost_LIBRARIES}
 )
 
 add_custom_command(
      TARGET Main
      POST_BUILD
-     COMMAND AllTests)
+     COMMAND AllTests
+)
