@@ -34,12 +34,14 @@ void Token::ThrowIfInproperInit() throw(TokenException)
 	{
 	case PrimativeToken::Number:
 	case PrimativeToken::Identifier:
-	case PrimativeToken::StringLit:
 		if (!HasValue())
 		{
 			throw TokenException();
 		}
 		break;
+	case PrimativeToken::StringLit:
+		// Strings can be empty
+		return;
 	default:
 		if (HasValue())
 		{

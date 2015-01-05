@@ -30,7 +30,7 @@ Token TokenStream::GetNextToken()
     return token;
 }
 
-Token TokenStream::PeekNextToken()
+Token TokenStream::PeekNextToken() const
 {
     if (m_tokenStreamIter == end(m_tokenStream))
     {

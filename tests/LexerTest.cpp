@@ -335,6 +335,13 @@ TEST_F(LexerTest, LexPrimative_GivesPrimative)
 	AssertEqualTokens(PrimativeToken::Primative, lexer.TokenizeNext());
 }
 
+TEST_F(LexerTest, LexArray_GivesArray)
+{
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("array");
+	Lexer lexer(std::move(inStream));
+	AssertEqualTokens(PrimativeToken::Array, lexer.TokenizeNext());
+}
+
 TEST_F(LexerTest, LexLongNumber_GivesNumber)
 {
 	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("1592");
@@ -358,8 +365,10 @@ TEST_F(LexerTest, LexNegNumber_GivesNumber)
 	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("-108");
 	Lexer lexer(std::move(inStream));
 	Token token = lexer.TokenizeNext();
+	AssertEqualTokens(PrimativeToken::Minus, token);
+	token = lexer.TokenizeNext();
 	AssertEqualTokens(PrimativeToken::Number, token);
-	ASSERT_STREQ("-108", token.UseValue().c_str());
+	ASSERT_STREQ("108", token.UseValue().c_str());
 }
 
 TEST_F(LexerTest, LexString_String)
@@ -369,6 +378,24 @@ TEST_F(LexerTest, LexString_String)
 	Lexer lexer(std::move(inStream));
 	Token token = lexer.TokenizeNext();
 	AssertEqualTokens(Token(PrimativeToken::StringLit, "This is \t a string"), token);
+}
+
+TEST_F(LexerTest, LexString_EmptyString)
+{
+	std::string strVal("\"\"");
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>(strVal);
+	Lexer lexer(std::move(inStream));
+	Token token = lexer.TokenizeNext();
+	AssertEqualTokens(Token(PrimativeToken::StringLit, ""), token);
+}
+
+TEST_F(LexerTest, LexString_Spaces)
+{
+	std::string strVal("\" \"");
+	std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>(strVal);
+	Lexer lexer(std::move(inStream));
+	Token token = lexer.TokenizeNext();
+	AssertEqualTokens(Token(PrimativeToken::StringLit, " "), token);
 }
 
 TEST_F(LexerTest, LexSuperSimpleComment_Success)

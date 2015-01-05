@@ -6,7 +6,7 @@
 #include <functional>
 
 class LexException
-	: std::exception
+	: public std::exception
 {
 public:
 	LexException(const char* message)

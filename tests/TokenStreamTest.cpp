@@ -74,3 +74,16 @@ TEST_F(TokenStreamTest, CreateFromStream_TokenizesMany)
     AssertNextPrimMatches(PrimativeToken::Then, stream);
     AssertNextPrimMatches(PrimativeToken::For, stream);
 }
+
+TEST_F(TokenStreamTest, CreateFromStream_TokenizesTon)
+{
+    unique_ptr<istream> inStream = make_unique<stringstream>("in rec1.nam := \"asd\" end");
+    TokenStream stream(move(inStream));
+    AssertNextPrimMatches(PrimativeToken::In, stream);
+    AssertNextPrimMatches(PrimativeToken::Identifier, stream);
+    AssertNextPrimMatches(PrimativeToken::Period, stream);
+    AssertNextPrimMatches(PrimativeToken::Identifier, stream);
+    AssertNextPrimMatches(PrimativeToken::Assign, stream);
+    AssertNextPrimMatches(PrimativeToken::StringLit, stream);
+    AssertNextPrimMatches(PrimativeToken::End, stream);
+}

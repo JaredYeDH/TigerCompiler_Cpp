@@ -1,3 +1,4 @@
+#include "gtest/gtest.h"
 #include "Parser.h"
 #include <fstream>
 #include <boost/filesystem.hpp>
@@ -5,16 +6,17 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 namespace fs = ::boost::filesystem;
-using namespace std;
-using namespace AST;
 
+class EndToEndTest : public ::testing::Test
+{
+public:
 	void RunAllTigFilesInTestDirectory()
 	{
-		fs::path path(fs::system_complete("../tests/TestPrograms"));
+		fs::path path(fs::system_complete("../../tests/TestPrograms"));
 		fs::directory_iterator iter(path), eod;
 		BOOST_FOREACH(fs::path const &p, std::make_pair(iter, eod))
 		{
-			if (is_regular_file(p) && boost::algorithm::ends_with(p.filename().string(), "12.tig"))
+			if (is_regular_file(p) && boost::algorithm::ends_with(p.filename().string(), ".tig"))
 			{
 				std::unique_ptr<std::istream> stream = make_unique<std::ifstream>(p.string(), std::ifstream::in);
 				Parser parser(TokenStream(std::move(stream)));
@@ -22,19 +24,25 @@ using namespace AST;
 				{
 					parser.Parse();
 				}
-				catch (const std::exception& t)
+				catch (const ParseException& t)
 				{
-					std::cout << t.what() << " thrown in " << p.filename().string() << "\n";
+					if (!boost::algorithm::ends_with(p.filename().string(), "49.tig"))
+					{
+						std::cout << t.what() << " thrown in " << p.filename().string() << "\n";
+						FAIL();
+					}
 				}
 				catch (...)
 				{
-					std::cout << "wtf in " << p.filename().string() << "\n";
+					std::cout << "Failure in " << p.filename().string() << "\n";
+					FAIL();
 				}
 			}
 		}
 	}
+};
 
-int main()
+TEST_F(EndToEndTest, RunAll)
 {
 	RunAllTigFilesInTestDirectory();
 }

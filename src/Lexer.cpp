@@ -108,6 +108,10 @@ Token Lexer::TokenizeKeywordOrIdentifier(char first)
 	{
 		return Token(PrimativeToken::Primative);
 	}
+	if (tokenStr == "array")
+	{
+		return Token(PrimativeToken::Array);
+	}
 
 	return Token(PrimativeToken::Identifier, tokenStr);
 }
@@ -152,13 +156,6 @@ Token Lexer::TokenizeOperatorOrNegNumber(char first)
 	case ('+'):
 		return Token(PrimativeToken::Plus);
 	case ('-'):
-		next = m_stream->peek();
-		if (isdigit(next))
-		{
-			m_stream->get();
-			Token token = TokenizeNumber(next);
-			return Token(PrimativeToken::Number, "-" + token.UseValue());
-		}
 		return Token(PrimativeToken::Minus);
 	case ('*'):
 		return Token(PrimativeToken::Times);

@@ -57,6 +57,7 @@ enum class PrimativeToken : unsigned int
     Type,
     Import,
     Primative,
+    Array,
 
     // Things with values   
     Number,
@@ -70,11 +71,11 @@ public:
     Token(PrimativeToken primToken) throw(TokenException);
     Token(PrimativeToken primToken, const std::string& value) throw(TokenException);
 
-    bool HasValue() const;
     PrimativeToken GetTokenType() const;
     const std::string& UseValue() const;
 
 private:
+    bool HasValue() const;
     PrimativeToken m_type;
     std::string m_value;
     void ThrowIfInproperInit() throw(TokenException);};

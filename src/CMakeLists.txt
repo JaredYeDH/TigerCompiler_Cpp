@@ -21,6 +21,8 @@ target_link_libraries( Main
     Lexer
     Parser
     ${Boost_LIBRARIES}
+    ${Boost_FILESYSTEM_LIBRARY}
+    ${Boost_SYSTEM_LIBRARY}
 )
 
 add_custom_command(

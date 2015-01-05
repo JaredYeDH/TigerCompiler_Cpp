@@ -9,7 +9,6 @@ TEST_F(TokensTest, MakeFromPrimThatNeedsValue_ThrowsNeedsValue_ExhaustiveFail)
 {
 	ASSERT_THROW(Token{ PrimativeToken::Number }, TokenException);
 	ASSERT_THROW(Token{ PrimativeToken::Identifier }, TokenException);
-	ASSERT_THROW(Token{ PrimativeToken::StringLit }, TokenException);
 }
 
 TEST_F(TokensTest, MakeFromPrimThatNeedsValue_Value_ExhaustivePass) 
@@ -17,6 +16,7 @@ TEST_F(TokensTest, MakeFromPrimThatNeedsValue_Value_ExhaustivePass)
 	ASSERT_NO_THROW( Token(PrimativeToken::Number, "1") );
 	ASSERT_NO_THROW( Token(PrimativeToken::Identifier, "a") );
 	ASSERT_NO_THROW( Token(PrimativeToken::StringLit, "a") );
+    ASSERT_NO_THROW( Token(PrimativeToken::StringLit, "") );
 } 
 
 TEST_F(TokensTest, MakeFromPrimThatNeedsNoValue_NoValue_ExhaustivePass) 
@@ -54,7 +54,6 @@ TEST_F(TokensTest, MakeFromPrimThatNeedsNoValue_GivenValue_ExhaustiveFail)
 TEST_F(TokensTest, NoValueToken_HasNoValue)
 {
 	Token t(PrimativeToken::Div);
-	ASSERT_FALSE(t.HasValue());
 	ASSERT_STREQ("", t.UseValue().c_str());
 }
 
@@ -62,6 +61,5 @@ TEST_F(TokensTest, NoValueToken_HasNoValue)
 TEST_F(TokensTest,ValueToken_HasValue)
 {
 	Token t(PrimativeToken::Identifier, "foo");
-	ASSERT_TRUE(t.HasValue());
 	ASSERT_STREQ("foo", t.UseValue().c_str());
 }

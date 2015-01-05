@@ -1,10 +1,10 @@
 cmake_minimum_required( VERSION 2.6 )
 project( ProjectName )
 
-add_definitions( -std=c++11 )
+add_definitions( -std=c++11 -g -Wall)
 
 # Set BOOST_ROOT environment variable to point to your local Boost dir.
-find_package( Boost REQUIRED )
+find_package(Boost COMPONENTS system filesystem REQUIRED)
 include_directories( ${Boost_INCLUDE_DIR} )
 
 # ensure that we have gtest
