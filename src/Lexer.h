@@ -2,25 +2,7 @@
 #include "common.h"
 #include "Tokens.h"
 #include <istream>
-#include <exception>
 #include <functional>
-
-class LexException
-	: public std::exception
-{
-public:
-	LexException(const char* message)
-		: m_message(message)
-	{}
-
-	virtual const char* what() const throw() override
-    {
-        return m_message.c_str();
-    }
-
-private:
-	std::string m_message;
-};
 
 class Lexer
 {

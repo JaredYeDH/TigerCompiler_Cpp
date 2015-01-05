@@ -10,6 +10,7 @@ set( test_sources
     LexerTest.cpp
     ParserTest.cpp
     SymbolTest.cpp
+    SymbolTableTest.cpp
     EndToEndTests.cpp
 )
 

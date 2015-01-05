@@ -3,23 +3,6 @@
 #include "common.h"
 #include "TokenStream.h"
 
-class ParseException
-    : public std::exception
-{
-public:
-    ParseException(const char* message)
-        : m_message(message)
-    {}
-
-    virtual const char* what() const throw() override
-    {
-        return m_message.c_str();
-    }
-
-private:
-    std::string m_message;
-};
-
 class Parser
 {
 public:

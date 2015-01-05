@@ -23,6 +23,11 @@ bool Symbol::operator!=(const Symbol& other) const
     return other.m_id != m_id;
 }
 
+bool Symbol::operator<(const Symbol& other) const
+{
+    return m_id < other.m_id;
+}
+
 const std::string& Symbol::UseName() const
 {
     return m_name;

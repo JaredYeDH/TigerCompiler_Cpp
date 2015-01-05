@@ -11,6 +11,7 @@ public:
     Symbol(const Symbol& other);
     bool operator==(const Symbol& other) const;
     bool operator!=(const Symbol& other) const;
+    bool operator<(const Symbol& other) const;
     const std::string& UseName() const;
     uint64_t Hash() const;
 
