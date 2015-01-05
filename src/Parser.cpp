@@ -235,7 +235,7 @@ unique_ptr<Expression> Parser::ParseFactor()
 			throw ParseException("Expected do after header of for loop");
 		}
 		auto body = ParseExpression();
-		return make_unique<ForExpression>(var.UseValue(), move(init), move(range), move(body));
+		return make_unique<ForExpression>(SymbolFactory::GenerateSymbol(var.UseValue()), move(init), move(range), move(body));
 	}
 	if (token == PrimativeToken::Let)
 	{
@@ -320,7 +320,7 @@ unique_ptr<AST::Expression> Parser::ParseFunRecArr(const Token& id)
 		{
 			throw ParseException("Unclosed paren following call expression");
 		}
-		return make_unique<CallExpression>(id.UseValue(), move(argList));
+		return make_unique<CallExpression>(SymbolFactory::GenerateSymbol(id.UseValue()), move(argList));
 	}
 	// record
 	if (token == PrimativeToken::LBrace)
@@ -331,7 +331,7 @@ unique_ptr<AST::Expression> Parser::ParseFunRecArr(const Token& id)
 		{
 			throw ParseException("Unclosed brace following record");
 		}
-		return make_unique<RecordExpression>(id.UseValue(), move(fieldList));
+		return make_unique<RecordExpression>(SymbolFactory::GenerateSymbol(id.UseValue()), move(fieldList));
 	}
 	// array
 	if (token == PrimativeToken::LBracket)
@@ -344,7 +344,7 @@ unique_ptr<AST::Expression> Parser::ParseFunRecArr(const Token& id)
 		}
 		if (m_tokenStream.PeekNextToken().GetTokenType() != PrimativeToken::Of)
 		{
-			auto simple = make_unique<SimpleVar>(id.UseValue());
+			auto simple = make_unique<SimpleVar>(SymbolFactory::GenerateSymbol(id.UseValue()));
 			return ParseFunRecArrPR(make_unique<SubscriptVar>(move(simple), move(size)));
 		}
 		else
@@ -352,11 +352,11 @@ unique_ptr<AST::Expression> Parser::ParseFunRecArr(const Token& id)
 			m_tokenStream.GetNextToken();
 		}
 		auto init = ParseExpression();
-		return make_unique<ArrayExpression>(id.UseValue(), move(size), move(init));
+		return make_unique<ArrayExpression>(SymbolFactory::GenerateSymbol(id.UseValue()), move(size), move(init));
 	}
 	else
 	{
-		return ParseFunRecArrPR(make_unique<SimpleVar>(id.UseValue()));
+		return ParseFunRecArrPR(make_unique<SimpleVar>(SymbolFactory::GenerateSymbol(id.UseValue())));
 	}
 }
 
@@ -375,7 +375,7 @@ unique_ptr<AST::Expression> Parser::ParseFunRecArrPR(unique_ptr<Var>&& inVar)
 			{
 				throw ParseException("Expected field following .");
 			}
-			var = make_unique<FieldVar>(field.UseValue(), std::move(var));
+			var = make_unique<FieldVar>(SymbolFactory::GenerateSymbol(field.UseValue()), std::move(var));
 		}
 		else
 		{
@@ -431,7 +431,7 @@ vector<FieldExp> Parser::ParseFieldList()
 			throw ParseException("Expected = after id in type fields");
 		}
 		auto val = ParseExpression();
-		fields.push_back(FieldExp(id.UseValue(), move(val)));
+		fields.push_back(FieldExp(SymbolFactory::GenerateSymbol(id.UseValue()), move(val)));
 
 		if (m_tokenStream.PeekNextToken().GetTokenType() == PrimativeToken::Comma)
 		{
@@ -464,7 +464,7 @@ unique_ptr<Declaration> Parser::ParseDecl()
 				throw ParseException("Expected = after name in TypeDeclaration");
 			}
 
-			types.push_back(TyDec(id.UseValue(), ParseType()));
+			types.push_back(TyDec(SymbolFactory::GenerateSymbol(id.UseValue()), ParseType()));
 		}
 		return make_unique<TypeDeclaration>(move(types));
 	}
@@ -476,12 +476,12 @@ unique_ptr<Declaration> Parser::ParseDecl()
 		{
 			throw ParseException("Expected Identifier following keyword var");
 		}
-		std::string ty;
+        boost::optional<Symbol> ty;
 		// optional type annotation
 		if (m_tokenStream.PeekNextToken().GetTokenType() == PrimativeToken::Colon)
 		{
 			eatToken = m_tokenStream.GetNextToken();
-			ty = m_tokenStream.GetNextToken().UseValue();
+			ty = SymbolFactory::GenerateSymbol(m_tokenStream.GetNextToken().UseValue());
 		}
 
 		if (m_tokenStream.GetNextToken().GetTokenType() != PrimativeToken::Assign)
@@ -489,7 +489,7 @@ unique_ptr<Declaration> Parser::ParseDecl()
 			throw ParseException("No assignment operator following Var declaration");
 		}
 
-		return make_unique<VarDeclaration>(id.UseValue(), ty, ParseExpression());
+        return make_unique<VarDeclaration>(SymbolFactory::GenerateSymbol(id.UseValue()), ty, ParseExpression());
 	}
 	if (token == PrimativeToken::Function)
 	{
@@ -542,7 +542,7 @@ FunDec Parser::ParseFunDec()
 	{
 		throw ParseException("Expected ) following parameter list for function declaration");
 	}
-	Symbol ty;
+    boost::optional<Symbol> ty;
 	if (m_tokenStream.PeekNextToken().GetTokenType() == PrimativeToken::Colon)
 	{
 		m_tokenStream.GetNextToken();
@@ -551,7 +551,7 @@ FunDec Parser::ParseFunDec()
 		{
 			throw ParseException("Expected type literal for type annotation");
 		}
-		ty = tyTok.UseValue();
+		ty = SymbolFactory::GenerateSymbol(tyTok.UseValue());
 	}
 	if (m_tokenStream.GetNextToken().GetTokenType() != PrimativeToken::Equal)
 	{
@@ -559,7 +559,7 @@ FunDec Parser::ParseFunDec()
 	}
 	auto body = ParseExpression();
 
-	return FunDec(id.UseValue(), move(fieldList), ty, move(body));
+	return FunDec(SymbolFactory::GenerateSymbol(id.UseValue()), move(fieldList), ty, move(body));
 }
 
 unique_ptr<Type> Parser::ParseType()
@@ -567,7 +567,7 @@ unique_ptr<Type> Parser::ParseType()
 	auto token = m_tokenStream.GetNextToken();
 	if (token.GetTokenType() == PrimativeToken::Identifier)
 	{
-		return make_unique<NameType>(token.UseValue());
+		return make_unique<NameType>(SymbolFactory::GenerateSymbol(token.UseValue()));
 	}
 	if (token.GetTokenType() == PrimativeToken::LBrace)
 	{
@@ -589,7 +589,7 @@ unique_ptr<Type> Parser::ParseType()
 		{
 			throw ParseException("Expected type literal for array type");
 		}
-		return make_unique<ArrayType>(ty.UseValue());
+		return make_unique<ArrayType>(SymbolFactory::GenerateSymbol(ty.UseValue()));
 	}
 	throw ParseException("Invalid type");
 }
@@ -610,7 +610,7 @@ vector<Field> Parser::ParseTyFields()
 		{
 			throw ParseException("Expected type literal for type annotation following id :");
 		}
-		fields.push_back(Field(id.UseValue(), val.UseValue()));
+		fields.push_back(Field(SymbolFactory::GenerateSymbol(id.UseValue()), SymbolFactory::GenerateSymbol(val.UseValue())));
 
 		if (m_tokenStream.PeekNextToken().GetTokenType() == PrimativeToken::Comma)
 		{

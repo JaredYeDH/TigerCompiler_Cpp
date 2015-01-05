@@ -1,7 +1,3 @@
-add_library( AST
-    AST.cpp
-)
-
 add_library( Lexer
 	Tokens.cpp
     TokenStream.cpp
@@ -10,6 +6,7 @@ add_library( Lexer
 
 add_library ( Parser
     Parser.cpp
+    Symbol.cpp
 )
 
 add_executable( Main
@@ -17,7 +14,6 @@ add_executable( Main
 )
 
 target_link_libraries( Main
-    AST
     Lexer
     Parser
     ${Boost_LIBRARIES}

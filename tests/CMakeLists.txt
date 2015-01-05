@@ -9,6 +9,7 @@ set( test_sources
     TokenStreamTest.cpp
     LexerTest.cpp
     ParserTest.cpp
+    SymbolTest.cpp
     EndToEndTests.cpp
 )
 
@@ -16,7 +17,6 @@ add_executable( AllTests
     ${test_sources})
 
 target_link_libraries( AllTests
-    AST
     Lexer
     Parser
     gtest_main

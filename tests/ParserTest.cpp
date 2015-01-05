@@ -28,7 +28,7 @@ void AssertThatTypesMatch(const Type& lhs, const Type& rhs)
     {
         auto lv = dynamic_cast<const NameType*>(&lhs);
         auto rv = dynamic_cast<const NameType*>(&rhs);
-        ASSERT_STREQ(lv->name.c_str(), rv->name.c_str());
+        ASSERT_EQ(lv->name, rv->name);
     }
     if (strcmp(lTy, recTy) == 0)
     {
@@ -36,15 +36,15 @@ void AssertThatTypesMatch(const Type& lhs, const Type& rhs)
         auto rv = dynamic_cast<const RecordType*>(&rhs);
         for (unsigned int i = 0; i < lv->fields.size(); ++i)
         {
-            ASSERT_STREQ(lv->fields[i].name.c_str(), rv->fields[i].name.c_str());
-            ASSERT_STREQ(lv->fields[i].type.c_str(), rv->fields[i].type.c_str());
+            ASSERT_EQ(lv->fields[i].name, rv->fields[i].name);
+            ASSERT_EQ(lv->fields[i].type, rv->fields[i].type);
         }
     }
     if (strcmp(lTy, arrTy) == 0)
     {
         auto lv = dynamic_cast<const ArrayType*>(&lhs);
         auto rv = dynamic_cast<const ArrayType*>(&rhs);
-        ASSERT_STREQ(lv->name.c_str(), rv->name.c_str());
+        ASSERT_EQ(lv->name, rv->name);
     }
 }
 
@@ -67,13 +67,13 @@ void AssertThatVarsMatch(const Var& lhs, const Var& rhs)
     {
         auto lv = dynamic_cast<const SimpleVar*>(&lhs);
         auto rv = dynamic_cast<const SimpleVar*>(&rhs);
-        ASSERT_STREQ(lv->symbol.c_str(), rv->symbol.c_str());
+        ASSERT_EQ(lv->symbol, rv->symbol);
     }
     if (strcmp(lTy, fldTy) == 0)
     {
         auto lv = dynamic_cast<const FieldVar*>(&lhs);
         auto rv = dynamic_cast<const FieldVar*>(&rhs);
-        ASSERT_STREQ(lv->symbol.c_str(), rv->symbol.c_str());
+        ASSERT_EQ(lv->symbol, rv->symbol);
         AssertThatVarsMatch(*lv->var, *rv->var);
     }
     if (strcmp(lTy, subTy) == 0)
@@ -109,14 +109,14 @@ void AssertThatDeclarationsMatch(const Declaration& lhs, const Declaration& rhs)
         {
             const FunDec* ld = &lv->decls[i];
             const FunDec* rd = &rv->decls[i];
-            ASSERT_STREQ(ld->name.c_str(), rd->name.c_str());
-            ASSERT_STREQ(ld->resultTy.c_str(), rd->resultTy.c_str());
+            ASSERT_EQ(ld->name, rd->name);
+            ASSERT_EQ(ld->resultTy, rd->resultTy);
             AssertThatAstsMatch(*ld->body, *rd->body);
             ASSERT_EQ(ld->fields.size(), rd->fields.size());
             for (unsigned int j = 0; j < ld->fields.size(); ++j)
             {
-                ASSERT_STREQ(ld->fields[j].name.c_str(), rd->fields[j].name.c_str());
-                ASSERT_STREQ(ld->fields[j].type.c_str(), rd->fields[j].type.c_str());
+                ASSERT_EQ(ld->fields[j].name, rd->fields[j].name);
+                ASSERT_EQ(ld->fields[j].type, rd->fields[j].type);
             }
         }
     }
@@ -124,8 +124,8 @@ void AssertThatDeclarationsMatch(const Declaration& lhs, const Declaration& rhs)
     {
         auto lv = dynamic_cast<const VarDeclaration*>(&lhs);
         auto rv = dynamic_cast<const VarDeclaration*>(&rhs);
-        ASSERT_STREQ(lv->name.c_str(), rv->name.c_str());
-        ASSERT_STREQ(lv->type.c_str(), rv->type.c_str());
+        ASSERT_EQ(lv->name, rv->name);
+        ASSERT_EQ(lv->type, rv->type);
         AssertThatAstsMatch(*lv->init, *rv->init);
     }
     if (strcmp(lTy, tyTy) == 0)
@@ -135,7 +135,7 @@ void AssertThatDeclarationsMatch(const Declaration& lhs, const Declaration& rhs)
         ASSERT_EQ(lv->types.size(), rv->types.size());
         for (unsigned int i = 0 ; i < lv->types.size(); ++i)
         {
-            ASSERT_STREQ(lv->types[i].name.c_str(), rv->types[i].name.c_str());
+            ASSERT_EQ(lv->types[i].name, rv->types[i].name);
             AssertThatTypesMatch(*lv->types[i].type, *rv->types[i].type);
         }
     }
@@ -187,13 +187,13 @@ void AssertThatAstsMatch(const Expression& lhs, const Expression& rhs)
     {
         auto lxp = dynamic_cast<const StringExpression*>(&lhs);
         auto rxp = dynamic_cast<const StringExpression*>(&rhs);
-        ASSERT_STREQ(lxp->value.c_str(), rxp->value.c_str());
+        ASSERT_EQ(lxp->value, rxp->value);
     }
     if (strcmp(lTy, calTy) == 0)
     {
         auto lxp = dynamic_cast<const CallExpression*>(&lhs);
         auto rxp = dynamic_cast<const CallExpression*>(&rhs);
-        ASSERT_STREQ(lxp->function.c_str(), rxp->function.c_str());
+        ASSERT_EQ(lxp->function, rxp->function);
         ASSERT_EQ(lxp->args.size(), rxp->args.size());
         for (unsigned int i = 0; i < lxp->args.size(); i++)
         {
@@ -212,11 +212,11 @@ void AssertThatAstsMatch(const Expression& lhs, const Expression& rhs)
     {
         auto lxp = dynamic_cast<const RecordExpression*>(&lhs);
         auto rxp = dynamic_cast<const RecordExpression*>(&rhs);
-        ASSERT_STREQ(lxp->type.c_str(), rxp->type.c_str());
+        ASSERT_EQ(lxp->type, rxp->type);
         ASSERT_EQ(lxp->fields.size(), rxp->fields.size());
         for (unsigned int i = 0; i < lxp->fields.size(); ++i)
         {
-            ASSERT_STREQ(lxp->fields[i].field.c_str(), rxp->fields[i].field.c_str());
+            ASSERT_EQ(lxp->fields[i].field, rxp->fields[i].field);
             AssertThatAstsMatch(
                     *lxp->fields[i].expr,
                     *rxp->fields[i].expr);
@@ -267,7 +267,7 @@ void AssertThatAstsMatch(const Expression& lhs, const Expression& rhs)
     {
         auto lxp = dynamic_cast<const ForExpression*>(&lhs);
         auto rxp = dynamic_cast<const ForExpression*>(&rhs);
-        ASSERT_STREQ(lxp->var.c_str(), rxp->var.c_str());
+        ASSERT_EQ(lxp->var, rxp->var);
         AssertThatAstsMatch(*lxp->high, *rxp->high);
         AssertThatAstsMatch(*lxp->low, *rxp->low);
         AssertThatAstsMatch(*lxp->body, *rxp->body);
@@ -291,7 +291,7 @@ void AssertThatAstsMatch(const Expression& lhs, const Expression& rhs)
     {
         auto lxp = dynamic_cast<const ArrayExpression*>(&lhs);
         auto rxp = dynamic_cast<const ArrayExpression*>(&rhs);
-        ASSERT_STREQ(lxp->type.c_str(), rxp->type.c_str());
+        ASSERT_EQ(lxp->type, rxp->type);
         AssertThatAstsMatch(*lxp->size, *rxp->size);
         AssertThatAstsMatch(*lxp->init, *rxp->init);
     }
@@ -528,7 +528,7 @@ TEST_F(ParserTest, ForExpr)
     CreateFromString("for a := 1 to 2 do 3");
     unique_ptr<Program> prog = parser->Parse();
     unique_ptr<Program> target = make_unique<Program>(make_unique<ForExpression>(
-        "a",
+        SymbolFactory::GenerateSymbol("a"),
         make_unique<IntExpression>(1),
         make_unique<IntExpression>(2),
         make_unique<IntExpression>(3)
@@ -541,7 +541,7 @@ TEST_F(ParserTest, CallExprNoArgs)
     CreateFromString("a()");
     unique_ptr<Program> prog = parser->Parse();
     unique_ptr<Program> target = make_unique<Program>(make_unique<CallExpression>(
-        "a",
+        SymbolFactory::GenerateSymbol("a"),
         vector<unique_ptr<Expression>>()
         ));
     AssertThatAstsMatch(*target->expression, *prog->expression);
@@ -554,7 +554,7 @@ TEST_F(ParserTest, CallExprOneArg)
     vector<unique_ptr<Expression>> args;
     args.push_back(make_unique<IntExpression>(1));
     unique_ptr<Program> target = make_unique<Program>(make_unique<CallExpression>(
-        "a",
+        SymbolFactory::GenerateSymbol("a"),
         move(args)
         ));
     AssertThatAstsMatch(*target->expression, *prog->expression);
@@ -570,7 +570,7 @@ TEST_F(ParserTest, CallExprManyArgs)
     args.push_back(make_unique<IntExpression>(2));
     args.push_back(make_unique<IntExpression>(3));
     unique_ptr<Program> target = make_unique<Program>(make_unique<CallExpression>(
-        "a",
+        SymbolFactory::GenerateSymbol("a"),
         move(args)
         ));
     AssertThatAstsMatch(*target->expression, *prog->expression);
@@ -583,11 +583,11 @@ TEST_F(ParserTest, BigSeq)
 
     vector<unique_ptr<Expression>> exprs;
     exprs.push_back(make_unique<AssignmentExpression>(
-        make_unique<SimpleVar>("a"),
+        make_unique<SimpleVar>(SymbolFactory::GenerateSymbol("a")),
         make_unique<IntExpression>(5)));
 
     exprs.push_back(make_unique<OpExpression>(
-        make_unique<VarExpression>(make_unique<SimpleVar>("a")),
+        make_unique<VarExpression>(make_unique<SimpleVar>(SymbolFactory::GenerateSymbol("a"))),
         make_unique<IntExpression>(1),
         BinOp::Plus
         ));
@@ -606,19 +606,19 @@ TEST_F(ParserTest, LetFunDecs)
     vector<FunDec> fundecs;
 
     vector<unique_ptr<Expression>> args;
-    args.push_back(make_unique<VarExpression>(make_unique<SimpleVar>("a")));
+    args.push_back(make_unique<VarExpression>(make_unique<SimpleVar>(SymbolFactory::GenerateSymbol("a"))));
 
-    fundecs.push_back(FunDec("f", vector<Field>(), "int", make_unique<CallExpression>("g", move(args))));
+    fundecs.push_back(FunDec(SymbolFactory::GenerateSymbol("f"), vector<Field>(), SymbolFactory::GenerateSymbol("int"), make_unique<CallExpression>(SymbolFactory::GenerateSymbol("g"), move(args))));
 
-    fundecs.push_back(FunDec("g", { Field("i", "int") }, "", make_unique<CallExpression>("f", vector<unique_ptr<Expression>>())));
+    fundecs.push_back(FunDec(SymbolFactory::GenerateSymbol("g"), { Field(SymbolFactory::GenerateSymbol("i"), SymbolFactory::GenerateSymbol("int")) }, boost::optional<Symbol>(), make_unique<CallExpression>(SymbolFactory::GenerateSymbol("f"), vector<unique_ptr<Expression>>())));
 
     vector<unique_ptr<Declaration>> decs;
-    decs.push_back(make_unique<VarDeclaration>("a", "", make_unique<IntExpression>(5)));
+    decs.push_back(make_unique<VarDeclaration>(SymbolFactory::GenerateSymbol("a"), boost::optional<Symbol>(), make_unique<IntExpression>(5)));
     decs.push_back(make_unique<FunctionDeclaration>(move(fundecs)));
 
     unique_ptr<Program> target = make_unique<Program>(make_unique<LetExpression>(
         move(decs),
-        make_unique<CallExpression>("f", vector<unique_ptr<Expression>>())));
+        make_unique<CallExpression>(SymbolFactory::GenerateSymbol("f"), vector<unique_ptr<Expression>>())));
 
     AssertThatAstsMatch(*target->expression, *prog->expression);
 }
@@ -638,8 +638,8 @@ TEST_F(ParserTest, TypeDecs)
     unique_ptr<Program> prog = parser->Parse();
 
     vector<TyDec> tyDecs;
-    tyDecs.push_back(TyDec("tree", make_unique<RecordType>( vector<Field>{ Field("key", "int") , Field("children", "treelist") } )));
-    tyDecs.push_back(TyDec("treelist", make_unique<RecordType>( vector<Field>{ Field("head", "tree"), Field("tail", "treelist") } )));
+    tyDecs.push_back(TyDec(SymbolFactory::GenerateSymbol("tree"), make_unique<RecordType>( vector<Field>{ Field(SymbolFactory::GenerateSymbol("key"), SymbolFactory::GenerateSymbol("int")) , Field(SymbolFactory::GenerateSymbol("children"), SymbolFactory::GenerateSymbol("treelist")) } )));
+    tyDecs.push_back(TyDec(SymbolFactory::GenerateSymbol("treelist"), make_unique<RecordType>( vector<Field>{ Field(SymbolFactory::GenerateSymbol("head"), SymbolFactory::GenerateSymbol("tree")), Field(SymbolFactory::GenerateSymbol("tail"), SymbolFactory::GenerateSymbol("treelist")) } )));
 
     vector<unique_ptr<Declaration>> decls;
     decls.push_back(make_unique<TypeDeclaration>(move(tyDecs)));

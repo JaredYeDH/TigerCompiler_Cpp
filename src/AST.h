@@ -1,10 +1,10 @@
 #pragma once
+#include "Symbol.h"
 #include <memory>
 #include <string>
 #include <vector>
 #include <iostream>
-
-typedef std::string Symbol;
+#include <boost/optional.hpp>
 
 namespace AST
 {
@@ -266,10 +266,10 @@ struct FunDec
 {
     Symbol name;
     std::vector<Field> fields;
-    Symbol resultTy;
+    boost::optional<Symbol> resultTy;
     std::unique_ptr<Expression> body;
 
-    FunDec(const Symbol& nam, std::vector<Field>&& flds, const Symbol& ty, std::unique_ptr<Expression>&& bdy)
+    FunDec(const Symbol& nam, std::vector<Field>&& flds, boost::optional<Symbol> ty, std::unique_ptr<Expression>&& bdy)
         : name(nam)
         , fields(std::move(flds))
         , resultTy(ty)
@@ -291,10 +291,10 @@ struct VarDeclaration
 {
    Symbol name;
    bool escape;
-   Symbol type;
+   boost::optional<Symbol> type;
    std::unique_ptr<Expression> init;
 
-   VarDeclaration(const Symbol& id, const Symbol& ty, std::unique_ptr<Expression>&& it)
+   VarDeclaration(const Symbol& id, boost::optional<Symbol> ty, std::unique_ptr<Expression>&& it)
     : name(id)
     , escape(true)
     , type(ty)
