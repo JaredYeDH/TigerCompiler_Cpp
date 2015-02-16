@@ -1,6 +1,5 @@
 #include "gtest/gtest.h"
 #include "Parser.h"
-#include <fstream>
 #include <boost/filesystem.hpp>
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string/predicate.hpp>
@@ -18,8 +17,7 @@ public:
 		{
 			if (is_regular_file(p) && boost::algorithm::ends_with(p.filename().string(), ".tig"))
 			{
-				std::unique_ptr<std::istream> stream = make_unique<std::ifstream>(p.string(), std::ifstream::in);
-				Parser parser(TokenStream(std::move(stream)));
+				Parser parser = Parser::CreateParserForFile(p.string());
 				try
 				{
 					parser.Parse();

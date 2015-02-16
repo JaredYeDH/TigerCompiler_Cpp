@@ -18,7 +18,6 @@ TEST_F(SymbolTableTest, NewSymTable_DoesNotContainAbitrarySymbol)
 {
     table->BeginScope();
     ASSERT_FALSE(table->LookUp(SymbolFactory::GenerateSymbol("a")));
-    table->EndScope();
 }
 
 
@@ -27,7 +26,6 @@ TEST_F(SymbolTableTest, NewSymTable_AddingContainsAbitrarySymbol)
     table->BeginScope();
     table->Insert(SymbolFactory::GenerateSymbol("a"), 4);
     ASSERT_TRUE(table->LookUp(SymbolFactory::GenerateSymbol("a")));
-    table->EndScope();
 }
 
 TEST_F(SymbolTableTest, SymbolTableErrorWhenOverwrittingExistingValue) 
@@ -37,7 +35,6 @@ TEST_F(SymbolTableTest, SymbolTableErrorWhenOverwrittingExistingValue)
     // overwrites original mapping
     EXPECT_THROW(table->Insert(SymbolFactory::GenerateSymbol("a"), 5), SemanticAnalysisException);
     ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 4);
-    table->EndScope();
 }
 
 TEST_F(SymbolTableTest, SymbolTableRemovedFromTableWhenOutOfScope)
@@ -58,34 +55,26 @@ TEST_F(SymbolTableTest, SymbolTableShadowedWhenNewScope)
         ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 5);
         table->EndScope();
     }
-    table->EndScope();
 }
 
 TEST_F(SymbolTableTest, SymbolTableBackToOrigianlWhenBackToOriginalScope)
 {
     table->BeginScope();
     table->Insert(SymbolFactory::GenerateSymbol("a"), 4);
-    {    
-        table->BeginScope();
-        table->Insert(SymbolFactory::GenerateSymbol("a"), 5);
-        ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 5);
-        table->EndScope();
-    }
-    ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 4);
+    table->BeginScope();
+    table->Insert(SymbolFactory::GenerateSymbol("a"), 5);
+    ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 5);
     table->EndScope();
+    ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 4);
 }
 
 TEST_F(SymbolTableTest, SymbolTableCanGetValueFromOuterScopeIfNotShadowed)
 {
     table->BeginScope();
     table->Insert(SymbolFactory::GenerateSymbol("a"), 4);
-    {    
-        table->BeginScope();
-        table->Insert(SymbolFactory::GenerateSymbol("b"), 5);
-        ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 4);
-        table->EndScope();
-    }
-    table->EndScope();
+    table->BeginScope();
+    table->Insert(SymbolFactory::GenerateSymbol("b"), 5);
+    ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 4);
 }
 
 

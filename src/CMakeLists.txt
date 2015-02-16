@@ -1,12 +1,16 @@
 add_library( Lexer
 	Tokens.cpp
     TokenStream.cpp
+    Position.cpp
+    PositionCountingStream.cpp
     Lexer.cpp
 )
 
 add_library ( Parser
     Parser.cpp
     Symbol.cpp
+    Types.cpp
+    Environments.cpp
 )
 
 add_executable( Main
@@ -17,8 +21,6 @@ target_link_libraries( Main
     Lexer
     Parser
     ${Boost_LIBRARIES}
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
 )
 
 add_custom_command(

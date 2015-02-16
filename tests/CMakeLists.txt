@@ -9,8 +9,11 @@ set( test_sources
     TokenStreamTest.cpp
     LexerTest.cpp
     ParserTest.cpp
+    PositionCountingStreamTest.cpp
     SymbolTest.cpp
     SymbolTableTest.cpp
+    TypeTest.cpp
+    EnvironmentsTest.cpp
     EndToEndTests.cpp
 )
 
@@ -22,8 +25,6 @@ target_link_libraries( AllTests
     Parser
     gtest_main
     ${Boost_LIBRARIES}
-    ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_SYSTEM_LIBRARY}
 )
 
 add_custom_command(

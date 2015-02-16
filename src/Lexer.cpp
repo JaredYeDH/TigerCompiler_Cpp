@@ -1,6 +1,8 @@
 #include "Lexer.h"
 #include <sstream>
 
+using namespace std;
+
 Lexer::Lexer(std::unique_ptr<std::istream>&& stream)
 	: m_stream(std::move(stream))
 {
@@ -9,12 +11,13 @@ Lexer::Lexer(std::unique_ptr<std::istream>&& stream)
 Token Lexer::TokenizeNext()
 {
 	TrashLeadingWhiteSpaceAndComments();
+    
+    if (!HasMoreToLex())
+    {
+        return Token(PrimativeToken::EndOfFile, m_stream.GetCurrentPosition());
+    }
 
-	char first = m_stream->get();
-	if (m_stream->gcount() == 0)
-	{
-		return Token(PrimativeToken::EndOfFile);
-	}
+	char first = m_stream.get();
 
 	if (ShouldTryTokenizeOperator(first))
 	{
@@ -34,92 +37,92 @@ Token Lexer::TokenizeNext()
 
 Token Lexer::TokenizeKeywordOrIdentifier(char first)
 {
-	std::string tokenStr = GetStringUntilPredicateNoLongerApplies(first, [](char c) { return isalnum(c) || c == '_';});
+	std::string tokenStr = GetStringUntilPredicateNoLongerApplies(first, [](char c) { return isalnum(c) || c == '_';}, "Keyword or identifier");
 	
 	if (tokenStr == "if")
 	{
-		return Token(PrimativeToken::If);
+		return Token(PrimativeToken::If, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "then")
 	{
-		return Token(PrimativeToken::Then);
+		return Token(PrimativeToken::Then, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "else")
 	{
-		return Token(PrimativeToken::Else);
+		return Token(PrimativeToken::Else, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "while")
 	{
-		return Token(PrimativeToken::While);
+		return Token(PrimativeToken::While, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "for")
 	{
-		return Token(PrimativeToken::For);
+		return Token(PrimativeToken::For, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "to")
 	{
-		return Token(PrimativeToken::To);
+		return Token(PrimativeToken::To, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "do")
 	{
-		return Token(PrimativeToken::Do);
+		return Token(PrimativeToken::Do, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "let")
 	{
-		return Token(PrimativeToken::Let);
+		return Token(PrimativeToken::Let, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "in")
 	{
-		return Token(PrimativeToken::In);
+		return Token(PrimativeToken::In, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "end")
 	{
-		return Token(PrimativeToken::End);
+		return Token(PrimativeToken::End, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "of")
 	{
-		return Token(PrimativeToken::Of);
+		return Token(PrimativeToken::Of, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "break")
 	{
-		return Token(PrimativeToken::Break);
+		return Token(PrimativeToken::Break, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "nil")
 	{
-		return Token(PrimativeToken::Nil);
+		return Token(PrimativeToken::Nil, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "function")
 	{
-		return Token(PrimativeToken::Function);
+		return Token(PrimativeToken::Function, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "var")
 	{
-		return Token(PrimativeToken::Var);
+		return Token(PrimativeToken::Var, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "type")
 	{
-		return Token(PrimativeToken::Type);
+		return Token(PrimativeToken::Type, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "import")
 	{
-		return Token(PrimativeToken::Import);
+		return Token(PrimativeToken::Import, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "primative")
 	{
-		return Token(PrimativeToken::Primative);
+		return Token(PrimativeToken::Primative, m_stream.GetCurrentPosition());
 	}
 	if (tokenStr == "array")
 	{
-		return Token(PrimativeToken::Array);
+		return Token(PrimativeToken::Array, m_stream.GetCurrentPosition());
 	}
 
-	return Token(PrimativeToken::Identifier, tokenStr);
+	return Token(PrimativeToken::Identifier, tokenStr, m_stream.GetCurrentPosition());
 }
 
 Token Lexer::TokenizeNumber(char first)
 {
-	std::string next = GetStringUntilPredicateNoLongerApplies(first, [](char c) { return isdigit(c); });
-	return Token(PrimativeToken::Number, next);
+	std::string next = GetStringUntilPredicateNoLongerApplies(first, [](char c) { return isdigit(c); }, "number");
+	return Token(PrimativeToken::Number, next, m_stream.GetCurrentPosition());
 }
 
 Token Lexer::TokenizeOperatorOrNegNumber(char first)
@@ -128,77 +131,81 @@ Token Lexer::TokenizeOperatorOrNegNumber(char first)
 	switch (first)
 	{
 	case (','):
-		return Token(PrimativeToken::Comma);
+		return Token(PrimativeToken::Comma, m_stream.GetCurrentPosition());
 	case (':'):
-		next = m_stream->peek();
+		next = m_stream.peek();
 		if (next == '=')
 		{
-			m_stream->get();
-			return Token(PrimativeToken::Assign);
+			m_stream.get();
+			return Token(PrimativeToken::Assign, m_stream.GetCurrentPosition());
 		}
-		return Token(PrimativeToken::Colon);
+		return Token(PrimativeToken::Colon, m_stream.GetCurrentPosition());
 	case (';'):
-		return Token(PrimativeToken::Semi);
+		return Token(PrimativeToken::Semi, m_stream.GetCurrentPosition());
 	case ('('):
-		return Token(PrimativeToken::LParen);
+		return Token(PrimativeToken::LParen, m_stream.GetCurrentPosition());
 	case (')'):
-		return Token(PrimativeToken::RParen);
+		return Token(PrimativeToken::RParen, m_stream.GetCurrentPosition());
 	case ('['):
-		return Token(PrimativeToken::LBracket);
+		return Token(PrimativeToken::LBracket, m_stream.GetCurrentPosition());
 	case (']'):
-		return Token(PrimativeToken::RBracket);
+		return Token(PrimativeToken::RBracket, m_stream.GetCurrentPosition());
 	case ('{'):
-		return Token(PrimativeToken::LBrace);
+		return Token(PrimativeToken::LBrace, m_stream.GetCurrentPosition());
 	case ('}'):
-		return Token(PrimativeToken::RBrace);
+		return Token(PrimativeToken::RBrace, m_stream.GetCurrentPosition());
 	case ('.'):
-		return Token(PrimativeToken::Period);
+		return Token(PrimativeToken::Period, m_stream.GetCurrentPosition());
 	case ('+'):
-		return Token(PrimativeToken::Plus);
+		return Token(PrimativeToken::Plus, m_stream.GetCurrentPosition());
 	case ('-'):
-		return Token(PrimativeToken::Minus);
+		return Token(PrimativeToken::Minus, m_stream.GetCurrentPosition());
 	case ('*'):
-		return Token(PrimativeToken::Times);
+		return Token(PrimativeToken::Times, m_stream.GetCurrentPosition());
 	case ('/'):
-		return Token(PrimativeToken::Div);
+		return Token(PrimativeToken::Div, m_stream.GetCurrentPosition());
 	case ('='):
-		return Token(PrimativeToken::Equal);
+		return Token(PrimativeToken::Equal, m_stream.GetCurrentPosition());
 	case ('<'):
-		next = m_stream->peek();
+		next = m_stream.peek();
 		if (next == '=')
 		{
-			m_stream->get();
-			return Token(PrimativeToken::LEqual);
+			m_stream.get();
+			return Token(PrimativeToken::LEqual, m_stream.GetCurrentPosition());
 		}
 		if (next == '>')
 		{
-			m_stream->get();
-			return Token(PrimativeToken::NotEqual);
+			m_stream.get();
+			return Token(PrimativeToken::NotEqual, m_stream.GetCurrentPosition());
 		}
-		return Token(PrimativeToken::LessThan);
+		return Token(PrimativeToken::LessThan, m_stream.GetCurrentPosition());
 	case ('>'):
-		next = m_stream->peek();
+		next = m_stream.peek();
 		if (next == '=')
 		{
-			m_stream->get();
-			return Token(PrimativeToken::GEqual);
+			m_stream.get();
+			return Token(PrimativeToken::GEqual, m_stream.GetCurrentPosition());
 		}
-		return Token(PrimativeToken::GreaterThan);
+		return Token(PrimativeToken::GreaterThan, m_stream.GetCurrentPosition());
 	case ('&'):
-		return Token(PrimativeToken::And);
+		return Token(PrimativeToken::And, m_stream.GetCurrentPosition());
 	case ('|'):
-		return Token(PrimativeToken::Or);
+		return Token(PrimativeToken::Or, m_stream.GetCurrentPosition());
 	}
 
-	throw LexException("Invalid character encountered while attempting to tokenize operator!");
+    stringstream ss;
+    ss << "Invalid character (" << first << ") encountered while attempting to tokenize operator.\n";
+    ss << "At line:" << m_stream.GetCurrentPosition().GetRow();
+    ss << " column:" << m_stream.GetCurrentPosition().GetColumn() << "\n";
+	throw LexException(ss.str().c_str());
 }
 
 Token Lexer::TokenizeString()
 {
-	std::string value = GetStringUntilPredicateNoLongerApplies(' ' , [](char c) { return c != '"'; });
+	std::string value = GetStringUntilPredicateNoLongerApplies(' ' , [](char c) { return c != '"'; }, "string literal");
 	// Trash closing quote
-	m_stream->get();
-	return Token(PrimativeToken::StringLit, value.substr(1, value.length()));
+	m_stream.get();
+	return Token(PrimativeToken::StringLit, value.substr(1, value.length()), m_stream.GetCurrentPosition());
 }
 
 void Lexer::TrashLeadingWhiteSpaceAndComments()
@@ -206,7 +213,7 @@ void Lexer::TrashLeadingWhiteSpaceAndComments()
 	bool somethingWasTrashed = false;
 	while (true)
 	{
-		somethingWasTrashed = GetStringUntilPredicateNoLongerApplies(' ', [](char c) { return isspace(c); }).length() > 1;
+		somethingWasTrashed = GetStringUntilPredicateNoLongerApplies(' ', [](char c) { return isspace(c); }, "comment").length() > 1;
 		somethingWasTrashed |= TryTrashComment();
 		if (!somethingWasTrashed)
 		{
@@ -237,30 +244,32 @@ bool Lexer::TryTrashComment()
 		}
 		else
 		{
-			m_stream->get();
+			m_stream.get();
 		}
 	}
 
 	if (depth > 0)
 	{
-		throw LexException("Un-closed comment");
+        stringstream err;
+        err << "Un-closed comment at line: " << m_stream.GetCurrentPosition().GetRow();
+        err << " column: " << m_stream.GetCurrentPosition().GetColumn();
+		throw LexException(err.str().c_str());
 	}
 	return true;
 }
 
 bool Lexer::TryTrashStartOfComment()
 {
-	if (m_stream->peek() == '/')
+	if (m_stream.peek() == '/')
 	{
-		m_stream->get();
-		if (m_stream->peek() != '*')
+		if (m_stream.peekTwo() != '*')
 		{
-			m_stream->unget();
 			return false;
 		}
 		else
 		{
-			m_stream->get();
+			m_stream.get();
+            m_stream.get();
 			return true;
 		}
 	}
@@ -269,17 +278,16 @@ bool Lexer::TryTrashStartOfComment()
 
 bool Lexer::TryTrashEndOfComment()
 {
-	if (m_stream->peek() == '*')
+	if (m_stream.peek() == '*')
 	{
-		m_stream->get();
-		if (m_stream->peek() != '/')
+		if (m_stream.peekTwo() != '/')
 		{
-			m_stream->unget();
 			return false;
 		}
 		else
 		{
-			m_stream->get();
+			m_stream.get();
+            m_stream.get();
 			return true;
 		}
 	}
@@ -288,7 +296,7 @@ bool Lexer::TryTrashEndOfComment()
 
 bool Lexer::HasMoreToLex()
 {
-	return !m_stream->eof();
+	return !m_stream.eof();
 }
 
 bool Lexer::ShouldTryTokenizeOperator(char first)
@@ -297,22 +305,26 @@ bool Lexer::ShouldTryTokenizeOperator(char first)
 	return validOps.find(first) != std::string::npos;
 }
 
-std::string Lexer::GetStringUntilPredicateNoLongerApplies(char first, std::function<bool(char)>&& pred)
+std::string Lexer::GetStringUntilPredicateNoLongerApplies(
+        char first,
+        std::function<bool(char)>&& pred,
+        const string& errMessage)
 {
 	if (!pred(first))
 	{
-		throw LexException("Attempt to tokenize when first char does not match predicate");
+        stringstream err;
+        err << "Encountered " << first << " when attempting to tokenize a " << errMessage;
+        err << "\nOccured at line: " << m_stream.GetCurrentPosition().GetRow();
+        err << " column: " << m_stream.GetCurrentPosition().GetColumn();
+		throw LexException(err.str().c_str());
 	}
 	std::stringstream ss;
 	ss << first;
-	while (HasMoreToLex() && pred(m_stream->peek()))
+	while (HasMoreToLex() && pred(m_stream.peek()))
 	{
-		char next = m_stream->get();
-		if (m_stream->gcount() == 0)
-		{
-			break;
-		}
+		char next = m_stream.get();
 		ss << next;
 	}
 	return ss.str();
 }
+

@@ -1,5 +1,8 @@
 #pragma once
+#include "Environments.h"
+#include "Position.h"
 #include "Symbol.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -38,34 +41,61 @@ struct Field
 
 struct AstNode
 {
-    virtual ~AstNode(){}
+    virtual const Position& UsePosition()
+    {
+        return m_position;
+    }
+
+    virtual void SetPosition(const Position& position)
+    {
+        m_position = position;
+    }
+
+    virtual void ReportError(std::string message) {}
+
+    virtual void TypeCheck() {}
+    
+    virtual ~AstNode() {}
+    
+    AstNode()
+        : m_position({0,0})
+    {}
+
+private:
+    Position m_position;
 };
 
-struct Var : public AstNode 
-{
-};
+struct Var : public AstNode {};
 
-struct Expression : public AstNode
-{
-};
+struct Expression : public AstNode {};
 
-struct Declaration : public AstNode
-{
-};
+struct Declaration : public AstNode {};
 
-struct Type : public AstNode
-{
-};
+struct TypeNode : public AstNode {};
 
 // While a Tiger program is just an expression, 
 // it is useful to have this here in case we
-// want to support top level decls or something 
-// to similar.
-struct Program
+// want to support top level decls or something similar.
+class Program
 {
+public:
     std::unique_ptr<Expression> expression;
+
+    Program(std::unique_ptr<Expression>&& expr, std::unique_ptr<ValueEnvironment>&& valEnv, std::unique_ptr<TypeEnvironment>&& typeEnv)
+        : expression(std::move(expr))
+        , m_valueEnvironment(std::move(valEnv))
+        , m_typeEnvironment(std::move(typeEnv))
+    {
+    }
+
     Program(std::unique_ptr<Expression>&& expr)
-        : expression(std::move(expr)) { /* empty */ }
+        : Program(std::move(expr), ValueEnvironment::GenerateBaseValueEnvironment(), TypeEnvironment::GenerateBaseTypeEnvironment())
+    {
+    }
+
+private:
+    std::unique_ptr<ValueEnvironment> m_valueEnvironment;
+    std::unique_ptr<TypeEnvironment> m_typeEnvironment;
 };
 
 struct SimpleVar
@@ -305,8 +335,8 @@ struct VarDeclaration
 struct TyDec
 {
     Symbol name;
-    std::unique_ptr<Type> type;
-    TyDec(const Symbol& id, std::unique_ptr<Type>&& ty)
+    std::unique_ptr<TypeNode> type;
+    TyDec(const Symbol& id, std::unique_ptr<TypeNode>&& ty)
         : name(id)
         , type(std::move(ty))
     {}
@@ -323,7 +353,7 @@ struct TypeDeclaration
 };
 
 struct NameType
-    : public Type
+    : public TypeNode
 {
     Symbol name;
 
@@ -332,7 +362,7 @@ struct NameType
 };
 
 struct RecordType
-    : public Type
+    : public TypeNode
 {
     std::vector<Field> fields;
 
@@ -341,7 +371,7 @@ struct RecordType
 };
 
 struct ArrayType
-    : public Type
+    : public TypeNode
 {
     Symbol name;
 

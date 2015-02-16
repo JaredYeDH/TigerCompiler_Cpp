@@ -20,6 +20,14 @@ public:
 
 };
 
+class TokenException : public std::exception
+{
+    virtual const char* what() const throw() override
+    {
+        return "Invalid creation of token";
+    }
+};
+
 class LexException
 	: public CustomException
 {
@@ -46,9 +54,6 @@ public:
         : CustomException(message)
     {}
 };
-
-
-
 
 class CompilerErrorException
     : public CustomException

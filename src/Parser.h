@@ -7,6 +7,7 @@ class Parser
 {
 public:
     Parser(TokenStream&& tokenStream);
+    static Parser CreateParserForFile(const std::string& file);
 
     std::unique_ptr<AST::Program> Parse();
 private:
@@ -29,7 +30,7 @@ private:
     std::vector<AST::FieldExp> ParseFieldList();
     std::unique_ptr<AST::Declaration> ParseDecl();
     std::vector<std::unique_ptr<AST::Declaration>> ParseDeclList();
-    std::unique_ptr<AST::Type> ParseType();
+    std::unique_ptr<AST::TypeNode> ParseType();
     std::vector<AST::FunDec> ParseFunctionDecls();
     AST::FunDec ParseFunDec();
     std::vector<AST::Field> ParseTyFields();

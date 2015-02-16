@@ -1,14 +1,7 @@
 #pragma once
+#include "common.h"
+#include "Position.h"
 #include <string>
-#include <exception>
-
-class TokenException : public std::exception
-{
-    virtual const char* what() const throw() override
-    {
-        return "Invalid creation of token";
-    }
-};
 
 enum class PrimativeToken : unsigned int 
 {
@@ -70,13 +63,19 @@ class Token
 public:
     Token(PrimativeToken primToken) throw(TokenException);
     Token(PrimativeToken primToken, const std::string& value) throw(TokenException);
+    Token(PrimativeToken primToken, Position position) throw(TokenException);
+    Token(PrimativeToken primToken, const std::string& value, Position position) throw(TokenException);
 
     PrimativeToken GetTokenType() const;
     const std::string& UseValue() const;
+    const Position& UsePosition() const;
 
 private:
     bool HasValue() const;
     PrimativeToken m_type;
     std::string m_value;
-    void ThrowIfInproperInit() throw(TokenException);};
+    Position m_position;
+
+    void ThrowIfInproperInit() throw(TokenException);
+};
 

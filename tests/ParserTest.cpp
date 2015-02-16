@@ -9,7 +9,7 @@ using namespace AST;
 
 void AssertThatAstsMatch(const Expression& lhs, const Expression& rhs);
 
-void AssertThatTypesMatch(const Type& lhs, const Type& rhs)
+void AssertThatTypesMatch(const TypeNode& lhs, const TypeNode& rhs)
 {
     const char* lTy = typeid(lhs).name();
     const char* rTy = typeid(rhs).name();

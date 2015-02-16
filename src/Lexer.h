@@ -1,5 +1,6 @@
 #pragma once
 #include "common.h"
+#include "PositionCountingStream.h"
 #include "Tokens.h"
 #include <istream>
 #include <functional>
@@ -11,7 +12,7 @@ public:
 	Token TokenizeNext();
 
 private:
-	std::unique_ptr<std::istream> m_stream;
+	PositionCountingStream m_stream;
 
     void TrashLeadingWhiteSpaceAndComments();
 
@@ -29,7 +30,10 @@ private:
 
     Token TokenizeString();
 
-    std::string GetStringUntilPredicateNoLongerApplies(char first, std::function<bool(char)>&& pred);
+    std::string GetStringUntilPredicateNoLongerApplies(
+            char first,
+            std::function<bool(char)>&& pred,
+            const std::string& errMessage);
 
     bool ShouldTryTokenizeOperator(char first);
 

@@ -44,6 +44,7 @@ public:
             {
                 return;
             }
+            return;
         }
 
         m_table[symbol].push(entry);
