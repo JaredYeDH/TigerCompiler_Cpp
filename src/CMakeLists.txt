@@ -7,6 +7,7 @@ add_library( Lexer
 )
 
 add_library ( Parser
+    AST.cpp
     Parser.cpp
     Symbol.cpp
     Types.cpp

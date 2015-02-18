@@ -2,6 +2,31 @@
 
 UniqueId TypeFactory::m_next_id{0};
 
+class StripLeadingNameVisitor
+    : public boost::static_visitor<Type>
+{
+public:
+    Type operator()(NameTy& ty) const 
+    {
+        if (!ty.second)
+        {
+            throw CompilerErrorException("Internal Compiler error: Attempt to strip name off a type in StripLeadingNameVisitor when no underlying type exists");
+        }
+        return Types::StripLeadingNameTypes(*ty.second);
+    }
+
+    template <typename T>
+    Type operator()(T& ty) const
+    {
+        return ty;
+    }
+};
+
+Type Types::StripLeadingNameTypes(Type& type)
+{
+    return boost::apply_visitor(StripLeadingNameVisitor(), type);
+}
+
 Type TypeFactory::MakeRecordType(const RecordTy& fields)
 {
     UniqueIdTagged<RecordTy> tagged;
@@ -83,7 +108,6 @@ void TypeFactory::AddTypeToName(Type& inNamedType, const Type& typeToTag)
     boost::apply_visitor(AddNameVisitor(typeToTag), inNamedType);
 }
 
-
 class AreEqualTypesVisitor
     : public boost::static_visitor<bool>
 {
@@ -157,7 +181,6 @@ public:
        return true;
    }
 };
-
 
 bool AreEqualTypes(const Type& t1, const Type& t2)
 {

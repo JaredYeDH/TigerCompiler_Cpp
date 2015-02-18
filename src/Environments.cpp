@@ -2,18 +2,18 @@
 
 using namespace std;
 
-unique_ptr<TypeEnvironment> TypeEnvironment::GenerateBaseTypeEnvironment()
+shared_ptr<TypeEnvironment> TypeEnvironment::GenerateBaseTypeEnvironment()
 {
-    unique_ptr<TypeEnvironment> tyEnv = make_unique<TypeEnvironment>();
+    auto tyEnv = make_shared<TypeEnvironment>();
     tyEnv->BeginScope();
     tyEnv->Insert(SymbolFactory::GenerateSymbol("int"), TypeFactory::MakeIntType());
     tyEnv->Insert(SymbolFactory::GenerateSymbol("string"), TypeFactory::MakeStringType());
     return tyEnv;
 }
 
-unique_ptr<ValueEnvironment> ValueEnvironment::GenerateBaseValueEnvironment()
+shared_ptr<ValueEnvironment> ValueEnvironment::GenerateBaseValueEnvironment()
 {
-    unique_ptr<ValueEnvironment> valEnv = make_unique<ValueEnvironment>();
+    auto valEnv = make_shared<ValueEnvironment>();
     valEnv->BeginScope();
     auto print = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeStringType()}, TypeFactory::MakeUnitType());
     valEnv->Insert(SymbolFactory::GenerateSymbol("print"), print);

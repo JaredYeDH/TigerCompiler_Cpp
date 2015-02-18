@@ -38,6 +38,11 @@ typedef std::pair<Symbol, boost::optional<Type>> NameTy;
 
 bool AreEqualTypes(const Type& t1, const Type& t2);
 
+namespace Types
+{
+Type StripLeadingNameTypes(Type& type);
+}
+
 class TypeFactory
 {
 public:

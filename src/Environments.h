@@ -7,6 +7,7 @@
 struct EnvEntry
 {
     virtual ~EnvEntry(){};
+    virtual Type GetType() = 0;
 };
 
 struct VarEntry
@@ -17,6 +18,11 @@ struct VarEntry
     VarEntry(const Type& ty)
         : type(ty)
     {}
+
+    Type GetType() override
+    {
+        return type;
+    }
 
     bool operator==(const VarEntry& other)
     {
@@ -33,6 +39,11 @@ struct FunEntry
 {
     std::vector<Type> formals;
     Type result;
+
+    Type GetType() override
+    {
+        return result;
+    }
 
     FunEntry(const std::vector<Type>& forms, const Type& ty)
         : formals(forms)
@@ -95,7 +106,7 @@ class TypeEnvironment
     : public SymbolTable<EnvType>
 {
 public:
-    static std::unique_ptr<TypeEnvironment> GenerateBaseTypeEnvironment();
+    static std::shared_ptr<TypeEnvironment> GenerateBaseTypeEnvironment();
     ~TypeEnvironment()
     {
         EndScope();
@@ -106,7 +117,7 @@ class ValueEnvironment
     : public SymbolTable<std::shared_ptr<EnvEntry>>
 {
 public:
-    static std::unique_ptr<ValueEnvironment> GenerateBaseValueEnvironment();
+    static std::shared_ptr<ValueEnvironment> GenerateBaseValueEnvironment();
     ~ValueEnvironment()
     {
         EndScope();

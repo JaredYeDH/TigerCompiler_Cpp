@@ -20,7 +20,8 @@ public:
 				Parser parser = Parser::CreateParserForFile(p.string());
 				try
 				{
-					parser.Parse();
+					auto prog = parser.Parse();
+                    prog->TypeCheck();
 				}
 				catch (const ParseException& t)
 				{

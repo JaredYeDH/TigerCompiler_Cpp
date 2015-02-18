@@ -140,3 +140,30 @@ TEST_F(TypeTest, NameType_UnTaggedAndTagged_NotEqual)
     TypeFactory::AddTypeToName(t1, TypeFactory::MakeIntType());
     ASSERT_FALSE(AreEqualTypes(t, t1));
 }
+
+TEST_F(TypeTest, StripLeadingNameTypes_WhenLeadingNames_ReturnsType)
+{
+    Type t = TypeFactory::MakeEmptyNameType(SymbolFactory::GenerateSymbol("a"));
+    TypeFactory::AddTypeToName(t, TypeFactory::MakeIntType());
+    Type t1 = TypeFactory::MakeEmptyNameType(SymbolFactory::GenerateSymbol("a"));
+    TypeFactory::AddTypeToName(t1, t);
+    ASSERT_TRUE(AreEqualTypes(Types::StripLeadingNameTypes(t1), TypeFactory::MakeIntType()));
+}
+
+TEST_F(TypeTest, StripLeadingNameTypes_WhenNoLeadingNames_ReturnsType)
+{
+    Type t1 = TypeFactory::MakeIntType();
+    Type t = TypeFactory::MakeIntType();
+    Type t2 = Types::StripLeadingNameTypes(t);
+    ASSERT_TRUE(AreEqualTypes(t1, t2));
+
+}
+
+TEST_F(TypeTest, StripLeadingNameTypes_WhenNoType_Throws)
+{
+    Type t = TypeFactory::MakeEmptyNameType(SymbolFactory::GenerateSymbol("a"));
+    EXPECT_THROW(
+            Types::StripLeadingNameTypes(t),
+            CompilerErrorException 
+            );
+}
