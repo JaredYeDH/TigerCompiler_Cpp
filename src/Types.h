@@ -41,6 +41,9 @@ bool AreEqualTypes(const Type& t1, const Type& t2);
 namespace Types
 {
 Type StripLeadingNameTypes(Type& type);
+boost::optional<Type> GetFieldFromRecord(const Type& type, const Symbol& symbol);
+bool IsArrayType(const Type& type);
+boost::optional<Type> GetTypeOfArray(const Type& type);
 }
 
 class TypeFactory

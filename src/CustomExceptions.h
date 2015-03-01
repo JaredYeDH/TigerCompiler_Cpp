@@ -9,6 +9,10 @@ public:
 		: m_message(message)
 	{}
 
+    CustomException(std::string message)
+        : m_message(message)
+    {}
+
 	virtual const char* what() const throw() override
     {
         return m_message.c_str();
@@ -60,6 +64,6 @@ class CompilerErrorException
 {
 public:
     CompilerErrorException(const char* message)
-        : CustomException(message)
+        : CustomException(std::string(message) + " : This is a compiler bug")
     {}
 };

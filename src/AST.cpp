@@ -15,26 +15,69 @@ Type Program::TypeCheck()
 
 Type SimpleVar::TypeCheck()
 {
-/*    auto ty = UseValueEnvironment().LookUp(symbol);
+    auto ty = UseValueEnvironment()->LookUp(symbol);
     if (!ty)
     {
         std::string error = "Unidentified variable " + symbol.UseName();
         ReportError(error);
     }
-    Type t = (*ty)->GetType();
-    return Types::StripLeadingNameTypes(t);
-*/
-    throw CompilerErrorException("Not Implemented");
+    if ((*ty)->IsFunction())
+    {
+        // TODO: check params
+        //const auto& formals = (*ty)->UseFormals();
+        throw CompilerErrorException("type checking simplevar function");
+        return (*ty)->GetType();
+    }
+    else
+    {
+        Type t = (*ty)->GetType();
+        return Types::StripLeadingNameTypes(t);
+    }
 }
 
 Type FieldVar::TypeCheck()
 {
-    throw CompilerErrorException("Not Implemented");
+    // var must be of type record
+    // symbol must be in record
+    var->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
+    Type varTy = var->TypeCheck();
+    auto ty = Types::GetFieldFromRecord(varTy, symbol);
+    if (!ty)
+    {
+        std::string msg = "attempt to get field of non-record or use of non-existant field";
+        ReportError(msg);
+    }
+    return *ty;
 }
 
 Type SubscriptVar::TypeCheck()
 {
-    throw CompilerErrorException("Not Implemented");
+    // var must be of type array
+    // expression must be of type int
+    var->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
+    expression->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
+
+    Type varTy = var->TypeCheck();
+    Type expTy = expression->TypeCheck();
+
+    if (!Types::IsArrayType(varTy))
+    {
+        std::string msg = "Attempt to subscript non-array type";
+        ReportError(msg);
+    }
+    else if (!AreEqualTypes(TypeFactory::MakeIntType(), expTy))
+    {
+        std::string msg = "Attempt to subscript with non-int";
+        ReportError(msg);
+    }
+
+    auto ty = Types::GetTypeOfArray(varTy);
+    if (!ty)
+    {
+        std::string msg = "Attempt to get type of array of non-array type";
+        ReportError(msg);
+    }
+    return *ty;
 }
 
 Type VarExpression::TypeCheck()
@@ -59,7 +102,41 @@ Type StringExpression::TypeCheck()
 
 Type CallExpression::TypeCheck()
 {
-    throw CompilerErrorException("Not Implemented");
+    auto symTyRaw = UseValueEnvironment()->LookUp(function);
+
+    if (!symTyRaw)
+    {
+        std::string msg = "attempt to call non-existant function";
+        ReportError(msg);
+    }
+
+    if (!(*symTyRaw)->IsFunction())
+    {
+        std::string msg = "attempt to call non function";
+        ReportError(msg);
+    }
+
+    const auto& formals = (*symTyRaw)->UseFormals();
+    Type ty = (*symTyRaw)->GetType();
+    if (formals.size() != args.size())
+    {
+        std::string msg = "Type of arguments do not match";
+        ReportError(msg);
+    }
+
+    for (unsigned int i = 0 ; i < args.size(); ++i)
+    {
+        args[i]->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
+
+        Type argTy = args[i]->TypeCheck();
+        if (!AreEqualTypes(argTy, formals[i]))
+        {
+            std::string msg = "Type of argument does not match";
+            ReportError(msg);
+        }
+    }
+
+    return ty;
 }
 
 Type OpExpression::TypeCheck()
@@ -85,6 +162,7 @@ Type OpExpression::TypeCheck()
 
 Type RecordExpression::TypeCheck()
 {
+    // TODO: implement
     throw CompilerErrorException("Not Implemented");
 }
 
@@ -197,6 +275,7 @@ Type LetExpression::TypeCheck()
     
     for (auto& decl : decls)
     {
+        decl->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
         decl->TypeCheck();
     }
     Type t = body->TypeCheck();
@@ -208,35 +287,69 @@ Type LetExpression::TypeCheck()
 
 Type ArrayExpression::TypeCheck()
 {
+    // TODO: implement
     throw CompilerErrorException("Not Implemented");
 }
 
 Type FunctionDeclaration::TypeCheck()
 {
+    // TODO: implement
     throw CompilerErrorException("Not Implemented");
 }
 
 Type VarDeclaration::TypeCheck()
 {
-    throw CompilerErrorException("Not Implemented");
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+   
+    init->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
+    Type experTy = init->TypeCheck();
+    
+    if (type)
+    {
+        auto ty = UseTypeEnvironment()->LookUp(*type);
+        if (!ty)
+        {
+            std::string message = "Use of non-existant type in type annotation in var declaration";
+            ReportError(message);
+        }
+        else if (!AreEqualTypes(experTy, ty->UseType()))
+        {
+            std::string message = "Un-matched types in var declaration";
+            ReportError(message);
+        }
+    }
+    else if (AreEqualTypes(experTy, TypeFactory::MakeNilType()))
+    {
+        std::string message = "Must use long form of var dec if init expression is nil";
+        ReportError(message);
+    }
+    
+    UseValueEnvironment()->Insert(name, std::make_shared<VarEntry>(experTy));
+
+    return TypeFactory::MakeUnitType();
 }
 
 Type TypeDeclaration::TypeCheck()
 {
+    // TODO: implement
     throw CompilerErrorException("Not Implemented");
 }
 
 Type NameType::TypeCheck()
 {
+    // TODO: implement
     throw CompilerErrorException("Not Implemented");
 }
 
 Type RecordType::TypeCheck()
 {
+    // TODO: implement
     throw CompilerErrorException("Not Implemented");
 }
 
 Type ArrayType::TypeCheck()
 {
+    // TODO: implement
     throw CompilerErrorException("Not Implemented");
 }

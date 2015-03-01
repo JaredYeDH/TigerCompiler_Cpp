@@ -186,3 +186,96 @@ bool AreEqualTypes(const Type& t1, const Type& t2)
 {
     return boost::apply_visitor(AreEqualTypesVisitor(), t1, t2);
 }
+
+class GetFieldFromRecordVisitor
+    : public boost::static_visitor<boost::optional<Type>>
+{
+public:
+    GetFieldFromRecordVisitor(const Symbol& sym)
+        : symbol(sym)
+    {}
+    
+    boost::optional<Type> operator()(const UniqueIdTagged<RecordTy>& record) const
+    {
+        boost::optional<Type> ty;
+        RecordTy rec = record.type;
+        for (const auto& pair : rec)
+        {
+            if (pair.first == symbol)
+            {
+                ty = pair.second;
+                break;
+            }
+        }
+        return ty;
+    }
+
+   template<typename T>
+   boost::optional<Type> operator()(const T&) const
+   {
+       return nullptr;
+   }
+
+private:
+   Symbol symbol;
+};
+
+boost::optional<Type> Types::GetFieldFromRecord(const Type& type, const Symbol& symbol)
+{
+    return boost::apply_visitor(GetFieldFromRecordVisitor(symbol), type);
+}
+
+class IsArrayTypeVisitor
+    : public boost::static_visitor<bool>
+{
+public:
+    bool operator()(const UniqueIdTagged<RecordTy>& record) const
+    {
+        return false;
+    }
+
+    template<typename T>
+    bool operator()(const UniqueIdTagged<T>& record) const
+    {
+        return true;
+    }
+
+   template<typename T>
+   bool operator()(const T&) const
+   {
+       return false;
+   }
+};
+
+bool Types::IsArrayType(const Type& type)
+{
+    return boost::apply_visitor(IsArrayTypeVisitor(), type);
+}
+
+class GetTypeOfArrayVisitor
+    : public boost::static_visitor<boost::optional<Type>>
+{
+public:
+    boost::optional<Type >operator()(const UniqueIdTagged<RecordTy>& record) const
+    {
+        return nullptr;
+    }
+
+    template<typename T>
+    boost::optional<Type> operator()(const UniqueIdTagged<T>& record) const
+    {
+        return record.type;
+    }
+
+   template<typename T>
+   boost::optional<Type> operator()(const T&) const
+   {
+       return nullptr;
+   }
+};
+
+boost::optional<Type> Types::GetTypeOfArray(const Type& type)
+{
+    return boost::apply_visitor(GetTypeOfArrayVisitor(), type);
+}
+
