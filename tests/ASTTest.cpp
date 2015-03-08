@@ -22,21 +22,20 @@ TEST_F(ASTTest, TypeCheck_OpExpressionMatchingTypes)
 
 TEST_F(ASTTest, TypeCheck_NilExprresion) 
 {
-    auto prog = make_unique<NilExpression>();
+    auto prog = make_unique<Program>(make_unique<NilExpression>());
     
     ASSERT_TRUE(AreEqualTypes(TypeFactory::MakeNilType(), prog->TypeCheck()));
 }
 
 TEST_F(ASTTest, TypeCheck_IntExprresion) 
 {
-    auto prog = make_unique<IntExpression>(5);
+    auto prog = make_unique<Program>(make_unique<IntExpression>(5));
     
     ASSERT_TRUE(AreEqualTypes(TypeFactory::MakeIntType(), prog->TypeCheck()));
 }
 
 TEST_F(ASTTest, TypeCheck_StringExprresion) 
 {
-    auto prog = make_unique<StringExpression>("moop");
-    
+    auto prog = make_unique<Program>(make_unique<StringExpression>("moop"));
     ASSERT_TRUE(AreEqualTypes(TypeFactory::MakeStringType(), prog->TypeCheck()));
 }

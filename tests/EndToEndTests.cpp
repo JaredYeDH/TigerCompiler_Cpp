@@ -9,8 +9,22 @@ namespace fs = ::boost::filesystem;
 class EndToEndTest : public ::testing::Test
 {
 public:
+    bool FileShouldFailToTypeCheck(const char* error, const std::string& filename)
+    {
+        if (true /* short circut all of these for now, let's see dem errors*/ || !boost::algorithm::ends_with(filename, "32.tig")
+            && !boost::algorithm::ends_with(filename, "33.tig")
+            && !boost::algorithm::ends_with(filename, "20.tig")
+            )
+        {
+            std::cout << error << " thrown in " << filename << "\n";
+            return false;
+        }
+        return true;
+    }
+
 	void RunAllTigFilesInTestDirectory()
 	{
+        bool allPassed = true;
 		fs::path path(fs::system_complete("../../tests/TestPrograms"));
 		fs::directory_iterator iter(path), eod;
 		BOOST_FOREACH(fs::path const &p, std::make_pair(iter, eod))
@@ -28,16 +42,22 @@ public:
 					if (!boost::algorithm::ends_with(p.filename().string(), "49.tig"))
 					{
 						std::cout << t.what() << " thrown in " << p.filename().string() << "\n";
-						FAIL();
+                        allPassed = false;
 					}
 				}
-				catch (...)
+                catch (const SemanticAnalysisException& t)
 				{
-					std::cout << "Failure in " << p.filename().string() << "\n";
-					FAIL();
+                    allPassed = FileShouldFailToTypeCheck(t.what(), p.filename().string()) && allPassed;
+				}
+				catch (const std::exception& t)
+				{
+					std::cout << t.what() << " thrown in " << p.filename().string() << "\n";
+                    allPassed = false;
 				}
 			}
 		}
+
+        ASSERT_TRUE(allPassed);
 	}
 };
 

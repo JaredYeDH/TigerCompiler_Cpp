@@ -256,7 +256,7 @@ class GetTypeOfArrayVisitor
     : public boost::static_visitor<boost::optional<Type>>
 {
 public:
-    boost::optional<Type >operator()(const UniqueIdTagged<RecordTy>& record) const
+    boost::optional<Type>operator()(const UniqueIdTagged<RecordTy>& record) const
     {
         return nullptr;
     }
@@ -279,3 +279,53 @@ boost::optional<Type> Types::GetTypeOfArray(const Type& type)
     return boost::apply_visitor(GetTypeOfArrayVisitor(), type);
 }
 
+class IsRecordTypeWithMatchingFieldsVisitor
+    : public boost::static_visitor<bool>
+{
+public:
+    IsRecordTypeWithMatchingFieldsVisitor(const RecordTy& fields, std::string& errorMsg)
+        : m_fields(fields)
+        , m_errorMsg(errorMsg)
+    {
+    }
+
+    bool operator()(const UniqueIdTagged<RecordTy>& record)
+    {
+        if (record.type.size() != m_fields.size())
+        {
+            m_errorMsg = "Record lacks enough fields";
+            return false;
+        }
+
+        for (unsigned int i = 0; i < record.type.size(); i++)
+        {
+            if (!AreEqualTypes(record.type[i].second, m_fields[i].second))
+            {
+                m_errorMsg = "Record type mismatch";
+                return false;
+            }
+            if (record.type[i].first != m_fields[i].first)
+            {
+                m_errorMsg = "Record position names mismatch";
+                return false;
+            }
+            return true;
+        }
+    }
+
+    template<typename T>
+    bool operator()(const T&) const
+    {
+        m_errorMsg = "Type is of non record type";
+        return false;
+    }
+
+private:
+    const RecordTy& m_fields;
+    std::string& m_errorMsg;
+};
+
+bool Types::IsRecordTypeWithMatchingFields(const Type& type, const RecordTy& fieldTypes, std::string& errorMsg)
+{
+    return boost::apply_visitor(IsRecordTypeWithMatchingFieldsVisitor(fieldTypes, errorMsg), type);
+}

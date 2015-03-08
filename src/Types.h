@@ -42,6 +42,7 @@ namespace Types
 {
 Type StripLeadingNameTypes(Type& type);
 boost::optional<Type> GetFieldFromRecord(const Type& type, const Symbol& symbol);
+bool IsRecordTypeWithMatchingFields(const Type& type, const RecordTy& fieldTypes, std::string& errorMsg);
 bool IsArrayType(const Type& type);
 boost::optional<Type> GetTypeOfArray(const Type& type);
 }

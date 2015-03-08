@@ -15,6 +15,9 @@ Type Program::TypeCheck()
 
 Type SimpleVar::TypeCheck()
 {
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
     auto ty = UseValueEnvironment()->LookUp(symbol);
     if (!ty)
     {
@@ -24,7 +27,6 @@ Type SimpleVar::TypeCheck()
     if ((*ty)->IsFunction())
     {
         // TODO: check params
-        //const auto& formals = (*ty)->UseFormals();
         throw CompilerErrorException("type checking simplevar function");
         return (*ty)->GetType();
     }
@@ -37,6 +39,9 @@ Type SimpleVar::TypeCheck()
 
 Type FieldVar::TypeCheck()
 {
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
     // var must be of type record
     // symbol must be in record
     var->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
@@ -52,6 +57,9 @@ Type FieldVar::TypeCheck()
 
 Type SubscriptVar::TypeCheck()
 {
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
     // var must be of type array
     // expression must be of type int
     var->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
@@ -82,26 +90,42 @@ Type SubscriptVar::TypeCheck()
 
 Type VarExpression::TypeCheck()
 { 
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+    
+    var->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
     return var->TypeCheck();
 }
 
 Type NilExpression::TypeCheck()
 {
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
     return TypeFactory::MakeNilType();
 }
 
 Type IntExpression::TypeCheck()
 {
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
     return TypeFactory::MakeIntType();
 }
 
 Type StringExpression::TypeCheck()
 {
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
     return TypeFactory::MakeStringType();
 }
 
 Type CallExpression::TypeCheck()
 {
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
     auto symTyRaw = UseValueEnvironment()->LookUp(function);
 
     if (!symTyRaw)
@@ -141,6 +165,9 @@ Type CallExpression::TypeCheck()
 
 Type OpExpression::TypeCheck()
 {
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
     lhs->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
     rhs->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
     auto leftType = lhs->TypeCheck();
@@ -162,13 +189,41 @@ Type OpExpression::TypeCheck()
 
 Type RecordExpression::TypeCheck()
 {
-    // TODO: implement
-    throw CompilerErrorException("Not Implemented");
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
+    auto expectTyWrapper = UseTypeEnvironment()->LookUp(type);
+    if (!expectTyWrapper)
+    {
+        std::string msg("attempt to create instance of record of non existing type");
+        ReportError(msg);
+    }
+    Type expectedType = expectTyWrapper->UseType();
+
+    RecordTy fieldTypes;
+    for (const auto& field : fields)
+    {
+        field.expr->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
+        Type ty = field.expr->TypeCheck();
+        fieldTypes.push_back({field.field, ty});
+    }
+
+    std::string errorMessage;
+    if (!Types::IsRecordTypeWithMatchingFields(expectedType, fieldTypes, errorMessage))
+    {
+        ReportError(errorMessage);
+    }
+
+    // TODO: what type should this return?
+    return TypeFactory::MakeUnitType();
 }
 
 Type SeqExpression::TypeCheck()
 {
-    Type t;
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
+    Type t = TypeFactory::MakeUnitType();
     for (auto& expr : expressions)
     {
         expr->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
@@ -179,6 +234,9 @@ Type SeqExpression::TypeCheck()
 
 Type AssignmentExpression::TypeCheck()
 {
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
     var->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
     expression->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
 
@@ -196,6 +254,9 @@ Type AssignmentExpression::TypeCheck()
 
 Type IfExpression::TypeCheck()
 {
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
     test->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
     thenBranch->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
     Type testTy = test->TypeCheck();
@@ -225,6 +286,9 @@ Type IfExpression::TypeCheck()
 
 Type WhileExpression::TypeCheck()
 {
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
     test->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
     body->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
     if (!AreEqualTypes(TypeFactory::MakeIntType(), test->TypeCheck()))
@@ -238,6 +302,9 @@ Type WhileExpression::TypeCheck()
 
 Type ForExpression::TypeCheck()
 {
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
     low->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
     high->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
     Type lTy = low->TypeCheck();
@@ -265,11 +332,17 @@ Type ForExpression::TypeCheck()
 
 Type BreakExpression::TypeCheck()
 {
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
     return TypeFactory::MakeUnitType();
 }
 
 Type LetExpression::TypeCheck()
 {
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
     UseTypeEnvironment()->BeginScope();
     UseValueEnvironment()->BeginScope();
     
@@ -278,6 +351,7 @@ Type LetExpression::TypeCheck()
         decl->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
         decl->TypeCheck();
     }
+    body->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
     Type t = body->TypeCheck();
 
     UseValueEnvironment()->EndScope();
@@ -287,14 +361,100 @@ Type LetExpression::TypeCheck()
 
 Type ArrayExpression::TypeCheck()
 {
-    // TODO: implement
-    throw CompilerErrorException("Not Implemented");
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
+    // the typeof init must match type of type
+    // size must be of type int
+    // ??? return a new array type ???
+
+    size->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
+    init->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
+
+    Type sizeTy = size->TypeCheck();
+    Type initTy = init->TypeCheck();
+
+    if (!AreEqualTypes(TypeFactory::MakeIntType(), sizeTy))
+    {
+        std::string msg = "Can not use non-init type for size of array";
+        ReportError(msg);
+    }
+    
+    auto tyTy = UseTypeEnvironment()->LookUp(type);
+    if (!tyTy)
+    {
+        std::string msg = "Attempt to use non-existant type for type of array";
+        ReportError(msg);
+    }
+
+    if (!AreEqualTypes(tyTy->UseType(), initTy))
+    {
+        std::string msg = "Init for array does not match type of array";
+        ReportError(msg);
+    }
+
+    // TODO: what type is an array expression?
+    return TypeFactory::MakeNilType();
+}
+
+// Will not add the funentry to the environment. This promises to leave the
+// environments as they where when you passed them in when it's done.
+std::shared_ptr<FunEntry> CheckFunctionDecl(std::shared_ptr<ValueEnvironment>& valEnv, std::shared_ptr<TypeEnvironment>& tyEnv, const FunDec& decl)
+{
+    // vector<Field> fields
+    // optional<Symbol> resultTy
+    // unique_ptr<Expression> body
+
+    valEnv->BeginScope();
+    tyEnv->BeginScope();
+
+    std::vector<Type> formals;
+
+    for (const Field& field : decl.fields)
+    {
+        auto formalType = tyEnv->LookUp(field.name);
+        if (!formalType)
+        {
+            throw SemanticAnalysisException("Formal function argument is of non-existant type");
+        }
+
+        valEnv->Insert(field.name, std::make_shared<VarEntry>(formalType->UseType()));
+        formals.push_back(formalType->UseType());
+    }
+
+    decl.body->SetEnvironments(valEnv, tyEnv);
+    Type actualType = decl.body->TypeCheck();
+    if (decl.resultTy)
+    {
+        auto resultTy = tyEnv->LookUp(*decl.resultTy);
+        if (!resultTy)
+        {
+            throw SemanticAnalysisException("Listed result type of function is non-existant");
+        }
+        if (!AreEqualTypes(resultTy->UseType(), actualType))
+        {
+            throw SemanticAnalysisException("Actual type of function does not match listed");
+        }
+    }
+
+    valEnv->EndScope();
+    tyEnv->EndScope();
+    
+    return std::make_shared<FunEntry>(formals, actualType);
 }
 
 Type FunctionDeclaration::TypeCheck()
 {
-    // TODO: implement
-    throw CompilerErrorException("Not Implemented");
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+
+    // TODO: Recursive decls
+    for (const auto& decl : decls)
+    {
+        std::shared_ptr<FunEntry> fun = CheckFunctionDecl(UseValueEnvironment(), UseTypeEnvironment(), decl);
+        UseValueEnvironment()->Insert(decl.name, fun);
+    }
+    return TypeFactory::MakeUnitType();
 }
 
 Type VarDeclaration::TypeCheck()
@@ -332,24 +492,58 @@ Type VarDeclaration::TypeCheck()
 
 Type TypeDeclaration::TypeCheck()
 {
-    // TODO: implement
-    throw CompilerErrorException("Not Implemented");
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+    
+    for (const TyDec& tyDec : types)
+    {
+        tyDec.type->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
+        Type ty = tyDec.type->TypeCheck();
+        UseTypeEnvironment()->Insert(tyDec.name, ty);
+    }
+
+    // TODO: does this return something different?
+    return TypeFactory::MakeUnitType();
 }
 
 Type NameType::TypeCheck()
 {
-    // TODO: implement
-    throw CompilerErrorException("Not Implemented");
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
+    return TypeFactory::MakeEmptyNameType(name);
 }
 
 Type RecordType::TypeCheck()
 {
-    // TODO: implement
-    throw CompilerErrorException("Not Implemented");
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
+    RecordTy record;
+    for (const auto& field: fields)
+    {
+        auto ty = UseTypeEnvironment()->LookUp(field.type);
+        if (!ty)
+        {
+            std::string msg = "Attempt to make record with non existant type";
+            ReportError(msg);
+        }
+        record.push_back({field.name, ty->UseType()});
+    }
+    return TypeFactory::MakeRecordType(record);
 }
 
 Type ArrayType::TypeCheck()
 {
-    // TODO: implement
-    throw CompilerErrorException("Not Implemented");
+    assert(UseValueEnvironment());
+    assert(UseTypeEnvironment());
+ 
+    auto ty = UseTypeEnvironment()->LookUp(name);
+    if (!ty)
+    {
+        std::string msg = "Type checking arraytype with non bound name for type";
+        ReportError(msg);
+    }
+    Type type = ty->UseType();
+    return TypeFactory::MakeArrayType(type);
 }
