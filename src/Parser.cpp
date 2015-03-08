@@ -37,20 +37,30 @@ BinOp MapPrimTokenToBinOp(PrimativeToken token)
 	throw ParseException("Expected Binary operator");
 }
 
-Parser::Parser(TokenStream&& stream)
-    : m_tokenStream(move(stream))
+Parser::Parser(
+        TokenStream&& tokenStream,
+        const std::shared_ptr<CompileTimeErrorReporter>& errorReporter,
+        const std::shared_ptr<WarningReporter>& warningReporter)
+    : m_tokenStream(move(tokenStream))
+    , m_errorReporter(errorReporter)
+    , m_warningReporter(warningReporter)
 {
 }
 
-Parser Parser::CreateParserForFile(const std::string& file)
+Parser Parser::CreateParserForFile(
+        const std::string& file,
+        const std::shared_ptr<CompileTimeErrorReporter>& errorReporter,
+        const std::shared_ptr<WarningReporter>& warningReporter)
 {
     std::unique_ptr<std::istream> stream = make_unique<std::ifstream>(file, std::ifstream::in);
-    return Parser(TokenStream(std::move(stream)));
+    return Parser(TokenStream(std::move(stream)), errorReporter, warningReporter);
 }
 
 unique_ptr<Program> Parser::Parse()
 {
-    return make_unique<Program>(ParseExpression());
+    assert(m_errorReporter);
+    assert(m_warningReporter);
+    return make_unique<Program>(ParseExpression(), m_errorReporter, m_warningReporter);
 }
 
 unique_ptr<Expression> Parser::ParseExpression()
@@ -65,16 +75,16 @@ unique_ptr<Expression> Parser::ParseExpOr()
 
 unique_ptr<Expression> Parser::ParseExpOrPR(unique_ptr<AST::Expression>&& lhs)
 {
-	if (m_tokenStream.PeekNextToken().GetTokenType() == PrimativeToken::Or)
+    auto peeked = m_tokenStream.PeekNextToken();
+	if (peeked.GetTokenType() == PrimativeToken::Or)
 	{
 		// eat or
 		auto eat = m_tokenStream.GetNextToken();
 		// e1 | e2 => if e1 then 1 else e2
 		unique_ptr<Expression> ifExpr = make_unique<IfExpression>(
 			move(lhs),
-			make_unique<IntExpression>(1),
-			ParseExpression());
-        ifExpr->SetPosition(eat.UsePosition());
+			make_unique<IntExpression>(1, peeked.UsePosition()),
+			ParseExpression(), eat.UsePosition());
         return ifExpr;
 	}
 	return unique_ptr<Expression>(move(lhs));
@@ -88,7 +98,8 @@ unique_ptr<Expression> Parser::ParseExpAnd()
 
 unique_ptr<Expression> Parser::ParseExpAndPR(unique_ptr<AST::Expression>&& lhs)
 {
-	if (m_tokenStream.PeekNextToken().GetTokenType() == PrimativeToken::And)
+    auto peeked = m_tokenStream.PeekNextToken();
+	if (peeked.GetTokenType() == PrimativeToken::And)
 	{
 		// eat and
 		auto eat = m_tokenStream.GetNextToken();
@@ -96,8 +107,7 @@ unique_ptr<Expression> Parser::ParseExpAndPR(unique_ptr<AST::Expression>&& lhs)
 		unique_ptr<Expression> ifExpr = make_unique<IfExpression>(
 			move(lhs),
 			ParseExpression(),
-			make_unique<IntExpression>(0));
-        ifExpr->SetPosition(eat.UsePosition());
+			make_unique<IntExpression>(0, peeked.UsePosition()), eat.UsePosition());
         return ifExpr;
 	}
 	return unique_ptr<Expression>(move(lhs));
@@ -120,9 +130,10 @@ unique_ptr<Expression> Parser::ParseRelExp(unique_ptr<AST::Expression>&& lhs)
 	auto whichOp = find(begin(relOps), end(relOps), m_tokenStream.PeekNextToken().GetTokenType());
 	if (whichOp != end(relOps))
 	{
-		Token op = m_tokenStream.GetNextToken().GetTokenType();
+		auto opTok = m_tokenStream.GetNextToken();
+        Token op = opTok.GetTokenType();
 		auto rhs = ParseArithExp();
-		return make_unique<OpExpression>(move(lhs), move(rhs), MapPrimTokenToBinOp(op.GetTokenType()));
+		return make_unique<OpExpression>(move(lhs), move(rhs), MapPrimTokenToBinOp(op.GetTokenType()), opTok.UsePosition());
 	}
 	return unique_ptr<Expression>(move(lhs));
 }
@@ -137,8 +148,9 @@ unique_ptr<Expression> Parser::ParseTermPR(std::unique_ptr<AST::Expression>&& lh
 	auto primOp = m_tokenStream.PeekNextToken().GetTokenType();
 	if (primOp == PrimativeToken::Plus || primOp == PrimativeToken::Minus)
 	{
-		PrimativeToken primOp = m_tokenStream.GetNextToken().GetTokenType();
-		return make_unique<OpExpression>(move(lhs), ParseTermPR(ParseTerm()), MapPrimTokenToBinOp(primOp));
+        auto primTok = m_tokenStream.GetNextToken();
+		auto primOp = primTok.GetTokenType();
+		return make_unique<OpExpression>(move(lhs), ParseTermPR(ParseTerm()), MapPrimTokenToBinOp(primOp), primTok.UsePosition());
 	}
 	return unique_ptr<Expression>(move(lhs));
 }
@@ -149,8 +161,7 @@ unique_ptr<Expression> Parser::ParseFactor()
 	if (token == PrimativeToken::Nil)
 	{
 		auto eatToken = m_tokenStream.GetNextToken();
-		unique_ptr<Expression> expr = make_unique<NilExpression>();
-        expr->SetPosition(eatToken.UsePosition());
+		unique_ptr<Expression> expr = make_unique<NilExpression>(eatToken.UsePosition());
         return expr;
 	}
 	if (token == PrimativeToken::Number)
@@ -159,22 +170,19 @@ unique_ptr<Expression> Parser::ParseFactor()
 		int intVal;
 		stringstream value(eatToken.UseValue());
 		value >> intVal;
-		unique_ptr<Expression> expr = make_unique<IntExpression>(intVal);
-        expr->SetPosition(eatToken.UsePosition());
+		unique_ptr<Expression> expr = make_unique<IntExpression>(intVal, eatToken.UsePosition());
         return expr;
 	}
 	if (token == PrimativeToken::StringLit)
 	{
 		auto eatToken = m_tokenStream.GetNextToken();
-		unique_ptr<Expression> expr = make_unique<StringExpression>(eatToken.UseValue());
-        expr->SetPosition(eatToken.UsePosition());
+		unique_ptr<Expression> expr = make_unique<StringExpression>(eatToken.UseValue(), eatToken.UsePosition());
         return expr;
 	}
 	if (token == PrimativeToken::Break)
 	{
 		auto eatToken = m_tokenStream.GetNextToken();
-		unique_ptr<Expression> expr = make_unique<BreakExpression>();
-        expr->SetPosition(eatToken.UsePosition());
+		unique_ptr<Expression> expr = make_unique<BreakExpression>(eatToken.UsePosition());
         return expr;
 	}
 	if (token == PrimativeToken::LParen)
@@ -186,17 +194,15 @@ unique_ptr<Expression> Parser::ParseFactor()
 			throw ParseException("Unclosed paren");
 		}
 		m_tokenStream.GetNextToken();
-        exprList->SetPosition(eatToken.UsePosition());
         return exprList;
 	}
 	if (token == PrimativeToken::Minus)
 	{
 		auto eatToken = m_tokenStream.GetNextToken();
 		unique_ptr<Expression> expr =  make_unique<OpExpression>(
-			make_unique<IntExpression>(0),
+			make_unique<IntExpression>(0, eatToken.UsePosition()),
 			ParseExpression(),
-			BinOp::Minus);
-        expr->SetPosition(eatToken.UsePosition());
+			BinOp::Minus, eatToken.UsePosition());
         return expr;
 	}
 	if (token == PrimativeToken::If)
@@ -217,8 +223,7 @@ unique_ptr<Expression> Parser::ParseFactor()
 			m_tokenStream.GetNextToken();
 			elseBranch = ParseExpression();
 		}
-		unique_ptr<Expression> expr = make_unique<IfExpression>(move(ifBranch), move(thenBranch), move(elseBranch));
-        expr->SetPosition(eatToken.UsePosition());
+		unique_ptr<Expression> expr = make_unique<IfExpression>(move(ifBranch), move(thenBranch), move(elseBranch), eatToken.UsePosition());
         return expr;
 	}
 	if (token == PrimativeToken::While)
@@ -231,8 +236,7 @@ unique_ptr<Expression> Parser::ParseFactor()
 		}
 		m_tokenStream.GetNextToken();
 		auto body = ParseExpression();
-		unique_ptr<Expression> expr = make_unique<WhileExpression>(move(cond), move(body));
-        expr->SetPosition(eatToken.UsePosition());
+		unique_ptr<Expression> expr = make_unique<WhileExpression>(move(cond), move(body), eatToken.UsePosition());
         return expr;
 	}
 	if (token == PrimativeToken::For)
@@ -262,8 +266,7 @@ unique_ptr<Expression> Parser::ParseFactor()
 			throw ParseException("Expected do after header of for loop");
 		}
 		auto body = ParseExpression();
-		unique_ptr<Expression> expr = make_unique<ForExpression>(SymbolFactory::GenerateSymbol(var.UseValue()), move(init), move(range), move(body));
-        expr->SetPosition(forPos);
+		unique_ptr<Expression> expr = make_unique<ForExpression>(SymbolFactory::GenerateSymbol(var.UseValue()), move(init), move(range), move(body), forPos);
         return expr;
 	}
 	if (token == PrimativeToken::Let)
@@ -283,15 +286,14 @@ unique_ptr<Expression> Parser::ParseFactor()
 		}
 		else
 		{
-			expr = make_unique<SeqExpression>(vector<unique_ptr<Expression>>());
+			expr = make_unique<SeqExpression>(vector<unique_ptr<Expression>>(), m_tokenStream.PeekNextToken().UsePosition());
 		}
 		eatToken = m_tokenStream.GetNextToken();
 		if (eatToken.GetTokenType() != PrimativeToken::End)
 		{
 			throw ParseException("Expected end following let expression");
 		}
-		unique_ptr<Expression> letExp = make_unique<LetExpression>(move(decs), move(expr));
-        letExp->SetPosition(letPos);
+		unique_ptr<Expression> letExp = make_unique<LetExpression>(move(decs), move(expr), letPos);
         return letExp;
 	}
 	return ParseLValue();
@@ -302,8 +304,9 @@ unique_ptr<Expression> Parser::ParseFactorPR(std::unique_ptr<AST::Expression>&& 
 	auto primOp = m_tokenStream.PeekNextToken().GetTokenType();
 	if (primOp == PrimativeToken::Times || primOp == PrimativeToken::Div)
 	{
-		PrimativeToken primOp = m_tokenStream.GetNextToken().GetTokenType();
-		return make_unique<OpExpression>(move(lhs), ParseFactorPR(ParseFactor()), MapPrimTokenToBinOp(primOp));
+        auto primTok = m_tokenStream.GetNextToken();
+		auto primOp = primTok.GetTokenType();
+		return make_unique<OpExpression>(move(lhs), ParseFactorPR(ParseFactor()), MapPrimTokenToBinOp(primOp), primTok.UsePosition());
 	}
 	return unique_ptr<Expression>(move(lhs));
 }
@@ -312,12 +315,13 @@ unique_ptr<AST::Expression> Parser::ParseExpressionList()
 {
 	if (m_tokenStream.PeekNextToken().GetTokenType() == PrimativeToken::RParen)
 	{
-		return make_unique<SeqExpression>(vector<unique_ptr<Expression>>());
+		return make_unique<SeqExpression>(vector<unique_ptr<Expression>>(), m_tokenStream.PeekNextToken().UsePosition());
 	}
 
 	auto expression = ParseExpression();
 	if (m_tokenStream.PeekNextToken().GetTokenType() == PrimativeToken::Semi)
 	{
+        Position pos = m_tokenStream.PeekNextToken().UsePosition();
 		vector<unique_ptr<Expression>> exprs;
 		exprs.push_back(move(expression));
 		do
@@ -325,7 +329,7 @@ unique_ptr<AST::Expression> Parser::ParseExpressionList()
 			auto eat = m_tokenStream.GetNextToken();
 			exprs.push_back(ParseExpression());
 		} while (m_tokenStream.PeekNextToken().GetTokenType() == PrimativeToken::Semi);
-		return make_unique<SeqExpression>(move(exprs));
+		return make_unique<SeqExpression>(move(exprs), pos);
 	}
 	return expression;
 }
@@ -352,7 +356,7 @@ unique_ptr<AST::Expression> Parser::ParseFunRecArr(const Token& id)
 		{
 			throw ParseException("Unclosed paren following call expression");
 		}
-		return make_unique<CallExpression>(SymbolFactory::GenerateSymbol(id.UseValue()), move(argList));
+		return make_unique<CallExpression>(SymbolFactory::GenerateSymbol(id.UseValue()), move(argList), eatToken.UsePosition());
 	}
 	// record
 	if (token == PrimativeToken::LBrace)
@@ -363,7 +367,7 @@ unique_ptr<AST::Expression> Parser::ParseFunRecArr(const Token& id)
 		{
 			throw ParseException("Unclosed brace following record");
 		}
-		return make_unique<RecordExpression>(SymbolFactory::GenerateSymbol(id.UseValue()), move(fieldList));
+		return make_unique<RecordExpression>(SymbolFactory::GenerateSymbol(id.UseValue()), move(fieldList), id.UsePosition());
 	}
 	// array
 	if (token == PrimativeToken::LBracket)
@@ -376,19 +380,19 @@ unique_ptr<AST::Expression> Parser::ParseFunRecArr(const Token& id)
 		}
 		if (m_tokenStream.PeekNextToken().GetTokenType() != PrimativeToken::Of)
 		{
-			auto simple = make_unique<SimpleVar>(SymbolFactory::GenerateSymbol(id.UseValue()));
-			return ParseFunRecArrPR(make_unique<SubscriptVar>(move(simple), move(size)));
+			auto simple = make_unique<SimpleVar>(SymbolFactory::GenerateSymbol(id.UseValue()), id.UsePosition());
+			return ParseFunRecArrPR(make_unique<SubscriptVar>(move(simple), move(size), eatToken.UsePosition()));
 		}
 		else
 		{
 			m_tokenStream.GetNextToken();
 		}
 		auto init = ParseExpression();
-		return make_unique<ArrayExpression>(SymbolFactory::GenerateSymbol(id.UseValue()), move(size), move(init));
+		return make_unique<ArrayExpression>(SymbolFactory::GenerateSymbol(id.UseValue()), move(size), move(init), eatToken.UsePosition());
 	}
 	else
 	{
-		return ParseFunRecArrPR(make_unique<SimpleVar>(SymbolFactory::GenerateSymbol(id.UseValue())));
+		return ParseFunRecArrPR(make_unique<SimpleVar>(SymbolFactory::GenerateSymbol(id.UseValue()), id.UsePosition()));
 	}
 }
 
@@ -407,12 +411,13 @@ unique_ptr<AST::Expression> Parser::ParseFunRecArrPR(unique_ptr<Var>&& inVar)
 			{
 				throw ParseException("Expected field following .");
 			}
-			var = make_unique<FieldVar>(SymbolFactory::GenerateSymbol(field.UseValue()), std::move(var));
+			var = make_unique<FieldVar>(SymbolFactory::GenerateSymbol(field.UseValue()), std::move(var), field.UsePosition());
 		}
 		else
 		{
+            auto pos = m_tokenStream.PeekNextToken().UsePosition();
 			auto expr = ParseExpression();
-			var = make_unique<SubscriptVar>(move(var), move(expr));
+			var = make_unique<SubscriptVar>(move(var), move(expr), pos);
 			if (m_tokenStream.GetNextToken().GetTokenType() != PrimativeToken::RBracket)
 			{
 				throw ParseException("Exprected ] following subscript");
@@ -423,12 +428,12 @@ unique_ptr<AST::Expression> Parser::ParseFunRecArrPR(unique_ptr<Var>&& inVar)
 
 	if (m_tokenStream.PeekNextToken().GetTokenType() == PrimativeToken::Assign)
 	{
-		m_tokenStream.GetNextToken();
+		auto eat = m_tokenStream.GetNextToken();
 		auto val = ParseExpression();
-		return make_unique<AssignmentExpression>(move(var), move(val));
+		return make_unique<AssignmentExpression>(move(var), move(val), eat.UsePosition());
 	}
 
-	return make_unique<VarExpression>(move(var));
+	return make_unique<VarExpression>(move(var), m_tokenStream.PeekNextToken().UsePosition());
 }
 
 vector<unique_ptr<AST::Expression>> Parser::ParseArgList()
@@ -463,7 +468,7 @@ vector<FieldExp> Parser::ParseFieldList()
 			throw ParseException("Expected = after id in type fields");
 		}
 		auto val = ParseExpression();
-		fields.push_back(FieldExp(SymbolFactory::GenerateSymbol(id.UseValue()), move(val)));
+		fields.push_back(FieldExp(SymbolFactory::GenerateSymbol(id.UseValue()), move(val), id.UsePosition()));
 
 		if (m_tokenStream.PeekNextToken().GetTokenType() == PrimativeToken::Comma)
 		{
@@ -483,6 +488,7 @@ unique_ptr<Declaration> Parser::ParseDecl()
 	if (token == PrimativeToken::Type)
 	{
 		vector<TyDec> types;
+        auto pos = m_tokenStream.PeekNextToken().UsePosition();
 		while (m_tokenStream.PeekNextToken().GetTokenType() == PrimativeToken::Type)
 		{
 			auto eatToken = m_tokenStream.GetNextToken();
@@ -496,9 +502,9 @@ unique_ptr<Declaration> Parser::ParseDecl()
 				throw ParseException("Expected = after name in TypeDeclaration");
 			}
 
-			types.push_back(TyDec(SymbolFactory::GenerateSymbol(id.UseValue()), ParseType()));
+			types.push_back(TyDec(SymbolFactory::GenerateSymbol(id.UseValue()), ParseType(), id.UsePosition()));
 		}
-		return make_unique<TypeDeclaration>(move(types));
+		return make_unique<TypeDeclaration>(move(types), pos);
 	}
 	if (token == PrimativeToken::Var)
 	{
@@ -521,12 +527,12 @@ unique_ptr<Declaration> Parser::ParseDecl()
 			throw ParseException("No assignment operator following Var declaration");
 		}
 
-        return make_unique<VarDeclaration>(SymbolFactory::GenerateSymbol(id.UseValue()), ty, ParseExpression());
+        return make_unique<VarDeclaration>(SymbolFactory::GenerateSymbol(id.UseValue()), ty, ParseExpression(), id.UsePosition());
 	}
 	if (token == PrimativeToken::Function)
 	{
 		// don't eat the function token.
-		return make_unique<FunctionDeclaration>(ParseFunctionDecls());
+		return make_unique<FunctionDeclaration>(ParseFunctionDecls(), m_tokenStream.PeekNextToken().UsePosition());
 	}
 
 	return nullptr;
@@ -591,7 +597,7 @@ FunDec Parser::ParseFunDec()
 	}
 	auto body = ParseExpression();
 
-	return FunDec(SymbolFactory::GenerateSymbol(id.UseValue()), move(fieldList), ty, move(body));
+	return FunDec(SymbolFactory::GenerateSymbol(id.UseValue()), move(fieldList), ty, move(body), id.UsePosition());
 }
 
 unique_ptr<TypeNode> Parser::ParseType()
@@ -599,7 +605,7 @@ unique_ptr<TypeNode> Parser::ParseType()
 	auto token = m_tokenStream.GetNextToken();
 	if (token.GetTokenType() == PrimativeToken::Identifier)
 	{
-		return make_unique<NameType>(SymbolFactory::GenerateSymbol(token.UseValue()));
+		return make_unique<NameType>(SymbolFactory::GenerateSymbol(token.UseValue()), token.UsePosition());
 	}
 	if (token.GetTokenType() == PrimativeToken::LBrace)
 	{
@@ -608,7 +614,7 @@ unique_ptr<TypeNode> Parser::ParseType()
 		{
 			throw ParseException("Unclosed brace following Record declaration");
 		}
-		return make_unique<RecordType>(std::move(recType));
+		return make_unique<RecordType>(std::move(recType), token.UsePosition());
 	}
 	if (token.GetTokenType() == PrimativeToken::Array)
 	{
@@ -621,7 +627,7 @@ unique_ptr<TypeNode> Parser::ParseType()
 		{
 			throw ParseException("Expected type literal for array type");
 		}
-		return make_unique<ArrayType>(SymbolFactory::GenerateSymbol(ty.UseValue()));
+		return make_unique<ArrayType>(SymbolFactory::GenerateSymbol(ty.UseValue()), ty.UsePosition());
 	}
 	throw ParseException("Invalid type");
 }
@@ -642,7 +648,7 @@ vector<Field> Parser::ParseTyFields()
 		{
 			throw ParseException("Expected type literal for type annotation following id :");
 		}
-		fields.push_back(Field(SymbolFactory::GenerateSymbol(id.UseValue()), SymbolFactory::GenerateSymbol(val.UseValue())));
+		fields.push_back(Field(SymbolFactory::GenerateSymbol(id.UseValue()), SymbolFactory::GenerateSymbol(val.UseValue()), id.UsePosition()));
 
 		if (m_tokenStream.PeekNextToken().GetTokenType() == PrimativeToken::Comma)
 		{

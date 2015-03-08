@@ -7,6 +7,11 @@
 using namespace std;
 using namespace AST;
 
+unique_ptr<Program> MakeTestProgram(unique_ptr<Expression>&& expr)
+{
+    return make_unique<Program>(move(expr), make_shared<CompileTimeErrorReporter>(), make_shared<WarningReporter>());
+}
+
 void AssertThatAstsMatch(const Expression& lhs, const Expression& rhs);
 
 void AssertThatTypesMatch(const TypeNode& lhs, const TypeNode& rhs)
@@ -310,14 +315,14 @@ void ParserTest::CreateFromString(const string& program)
 {
     unique_ptr<istream> stream = make_unique<stringstream>(program);
     TokenStream tokenStream(move(stream));
-    parser = make_unique<Parser>(move(tokenStream));
+    parser = make_unique<Parser>(move(tokenStream), make_shared<CompileTimeErrorReporter>(), make_shared<WarningReporter>());
 }
 
 TEST_F(ParserTest, NilExp_noParens) 
 {
     CreateFromString("nil");
     unique_ptr<Program> prog = parser->Parse();
-    unique_ptr<Program> nil = make_unique<Program>(make_unique<NilExpression>());
+    unique_ptr<Program> nil = MakeTestProgram(make_unique<NilExpression>(Position{0,0}));
     AssertThatAstsMatch(nil->UseExpression(), prog->UseExpression());
 }
 
@@ -325,7 +330,7 @@ TEST_F(ParserTest, IntExp_noParens)
 {
     CreateFromString("4");
     unique_ptr<Program> prog = parser->Parse();
-    unique_ptr<Program> four = make_unique<Program>(make_unique<IntExpression>(4));
+    unique_ptr<Program> four = MakeTestProgram(make_unique<IntExpression>(4, Position(0,0)));
     AssertThatAstsMatch(prog->UseExpression(), four->UseExpression());
 }
 
@@ -333,10 +338,10 @@ TEST_F(ParserTest, SimpleArithExp_noParens)
 {
     CreateFromString("4 + 5");
     unique_ptr<Program> prog = parser->Parse();
-    unique_ptr<Program> target = make_unique<Program>(make_unique<OpExpression>(
-        make_unique<IntExpression>(4),
-        make_unique<IntExpression>(5),
-        BinOp::Plus
+    unique_ptr<Program> target = MakeTestProgram(make_unique<OpExpression>(
+        make_unique<IntExpression>(4, Position(0,0)),
+        make_unique<IntExpression>(5, Position(0,0)),
+        BinOp::Plus, Position{0,0}
     ));
     AssertThatAstsMatch(prog->UseExpression(), target->UseExpression());
 }
@@ -345,7 +350,7 @@ TEST_F(ParserTest, StringExp)
 {
     CreateFromString("\"Hello\"");
     unique_ptr<Program> prog = parser->Parse();
-    unique_ptr<Program> target = make_unique<Program>(make_unique<StringExpression>("Hello"));
+    unique_ptr<Program> target = MakeTestProgram(make_unique<StringExpression>("Hello", Position(0,0)));
     AssertThatAstsMatch(prog->UseExpression(), target->UseExpression());
 }
 
@@ -353,7 +358,7 @@ TEST_F(ParserTest, BreakExp)
 {
     CreateFromString("break");
     unique_ptr<Program> prog = parser->Parse();
-    unique_ptr<Program> target = make_unique<Program>(make_unique<BreakExpression>());
+    unique_ptr<Program> target = MakeTestProgram(make_unique<BreakExpression>(Position{0,0}));
     AssertThatAstsMatch(prog->UseExpression(), target->UseExpression());
 }
 
@@ -367,7 +372,7 @@ TEST_F(ParserTest, MatchedParens_Int)
 {
     CreateFromString("(4)");
     unique_ptr<Program> prog = parser->Parse();
-    unique_ptr<Program> four = make_unique<Program>(make_unique<IntExpression>(4));
+    unique_ptr<Program> four = MakeTestProgram(make_unique<IntExpression>(4, Position(0,0)));
     AssertThatAstsMatch(prog->UseExpression(), four->UseExpression());
 }
 
@@ -375,10 +380,10 @@ TEST_F(ParserTest, NegExpression)
 {
     CreateFromString("-6");
     unique_ptr<Program> prog = parser->Parse();
-    unique_ptr<Program> target = make_unique<Program>(make_unique<OpExpression>(
-        make_unique<IntExpression>(0),
-        make_unique<IntExpression>(6),
-        BinOp::Minus
+    unique_ptr<Program> target = MakeTestProgram(make_unique<OpExpression>(
+        make_unique<IntExpression>(0, Position(0,0)),
+        make_unique<IntExpression>(6, Position(0,0)),
+        BinOp::Minus, Position{0,0}
     ));
     AssertThatAstsMatch(target->UseExpression(), prog->UseExpression());
 }
@@ -388,8 +393,8 @@ TEST_F(ParserTest, Unit)
     CreateFromString("()");
     unique_ptr<Program> prog = parser->Parse();
 
-    unique_ptr<Program> target = make_unique<Program>(
-        make_unique<SeqExpression>(vector<unique_ptr<Expression>>())
+    unique_ptr<Program> target = MakeTestProgram(
+        make_unique<SeqExpression>(vector<unique_ptr<Expression>>(), Position{0,0})
     );
     AssertThatAstsMatch(prog->UseExpression(), target->UseExpression());
 }
@@ -400,11 +405,11 @@ TEST_F(ParserTest, SeqUnit)
     unique_ptr<Program> prog = parser->Parse();
 
     vector<unique_ptr<Expression>> vec;
-    vec.push_back(make_unique<IntExpression>(4));
-    vec.push_back(make_unique<SeqExpression>(vector<unique_ptr<Expression>>()));
+    vec.push_back(make_unique<IntExpression>(4, Position(0,0)));
+    vec.push_back(make_unique<SeqExpression>(vector<unique_ptr<Expression>>(), Position{0,0}));
 
-    unique_ptr<Program> target = make_unique<Program>(
-        make_unique<SeqExpression>(move(vec))
+    unique_ptr<Program> target = MakeTestProgram(
+        make_unique<SeqExpression>(move(vec), Position{0,0})
     );
     AssertThatAstsMatch(prog->UseExpression(), target->UseExpression());
 }
@@ -415,11 +420,11 @@ TEST_F(ParserTest, SeqInts)
     unique_ptr<Program> prog = parser->Parse();
 
     vector<unique_ptr<Expression>> vec;
-    vec.push_back(make_unique<IntExpression>(4));
-    vec.push_back(make_unique<IntExpression>(5));
+    vec.push_back(make_unique<IntExpression>(4, Position(0,0)));
+    vec.push_back(make_unique<IntExpression>(5, Position(0,0)));
 
-    unique_ptr<Program> target = make_unique<Program>(
-        make_unique<SeqExpression>(move(vec))
+    unique_ptr<Program> target = MakeTestProgram(
+        make_unique<SeqExpression>(move(vec), Position{0,0})
     );
     AssertThatAstsMatch(prog->UseExpression(), target->UseExpression());
 }
@@ -429,11 +434,11 @@ TEST_F(ParserTest, AndWeirdness)
     CreateFromString("4 & 7");
     unique_ptr<Program> prog = parser->Parse();
 
-    unique_ptr<Program> target = make_unique<Program>(
+    unique_ptr<Program> target = MakeTestProgram(
         make_unique<IfExpression>(
-            make_unique<IntExpression>(4),
-            make_unique<IntExpression>(7),
-            make_unique<IntExpression>(0))
+            make_unique<IntExpression>(4, Position(0,0)),
+            make_unique<IntExpression>(7, Position(0,0)),
+            make_unique<IntExpression>(0, Position(0,0)), Position{0,0})
         );
     AssertThatAstsMatch(target->UseExpression(), prog->UseExpression());
 }
@@ -443,11 +448,11 @@ TEST_F(ParserTest, OrWeirdness)
     CreateFromString("4 | 7");
     unique_ptr<Program> prog = parser->Parse();
 
-    unique_ptr<Program> target = make_unique<Program>(
+    unique_ptr<Program> target = MakeTestProgram(
         make_unique<IfExpression>(
-            make_unique<IntExpression>(4),
-            make_unique<IntExpression>(1),
-            make_unique<IntExpression>(7))
+            make_unique<IntExpression>(4, Position(0,0)),
+            make_unique<IntExpression>(1, Position(0,0)),
+            make_unique<IntExpression>(7, Position(0,0)), Position{0,0})
         );
     AssertThatAstsMatch(target->UseExpression(), prog->UseExpression());
 }
@@ -457,11 +462,11 @@ TEST_F(ParserTest, IfWithElse)
     CreateFromString("if 4 then 7 else 5");
     unique_ptr<Program> prog = parser->Parse();
 
-    unique_ptr<Program> target = make_unique<Program>(
+    unique_ptr<Program> target = MakeTestProgram(
         make_unique<IfExpression>(
-            make_unique<IntExpression>(4),
-            make_unique<IntExpression>(7),
-            make_unique<IntExpression>(5))
+            make_unique<IntExpression>(4, Position(0,0)),
+            make_unique<IntExpression>(7, Position(0,0)),
+            make_unique<IntExpression>(5, Position(0,0)), Position{0,0})
         );
     AssertThatAstsMatch(target->UseExpression(), prog->UseExpression());
 }
@@ -471,11 +476,11 @@ TEST_F(ParserTest, IfWithNoElse)
     CreateFromString("if 4 then 7");
     unique_ptr<Program> prog = parser->Parse();
 
-    unique_ptr<Program> target = make_unique<Program>(
+    unique_ptr<Program> target = MakeTestProgram(
         make_unique<IfExpression>(
-            make_unique<IntExpression>(4),
-            make_unique<IntExpression>(7),
-            nullptr)
+            make_unique<IntExpression>(4, Position(0,0)),
+            make_unique<IntExpression>(7, Position(0,0)),
+            nullptr, Position{0,0})
         );
     AssertThatAstsMatch(target->UseExpression(), prog->UseExpression());
 }
@@ -484,14 +489,14 @@ TEST_F(ParserTest, ArithExp_Precedence)
 {
     CreateFromString("4 + 5 * 3");
     unique_ptr<Program> prog = parser->Parse();
-    unique_ptr<Program> target = make_unique<Program>(make_unique<OpExpression>(
-        make_unique<IntExpression>(4),
+    unique_ptr<Program> target = MakeTestProgram(make_unique<OpExpression>(
+        make_unique<IntExpression>(4, Position(0,0)),
         make_unique<OpExpression>(
-            make_unique<IntExpression>(5),
-            make_unique<IntExpression>(3),
-            BinOp::Times
+            make_unique<IntExpression>(5, Position(0,0)),
+            make_unique<IntExpression>(3, Position(0,0)),
+            BinOp::Times, Position{0,0}
         ),
-        BinOp::Plus
+        BinOp::Plus, Position{0,0}
     ));
     AssertThatAstsMatch(prog->UseExpression(), target->UseExpression());
 }
@@ -500,14 +505,14 @@ TEST_F(ParserTest, ArithExp_PrecedenceBustingParens)
 {
     CreateFromString("(4 + 5) * 3");
     unique_ptr<Program> prog = parser->Parse();
-    unique_ptr<Program> target = make_unique<Program>(make_unique<OpExpression>(
+    unique_ptr<Program> target = MakeTestProgram(make_unique<OpExpression>(
         make_unique<OpExpression>(
-            make_unique<IntExpression>(4),
-            make_unique<IntExpression>(5),
-            BinOp::Plus
+            make_unique<IntExpression>(4, Position(0,0)),
+            make_unique<IntExpression>(5, Position(0,0)),
+            BinOp::Plus, Position{0,0}
         ),
-        make_unique<IntExpression>(3),
-        BinOp::Times
+        make_unique<IntExpression>(3, Position(0,0)),
+        BinOp::Times, Position{0,0}
     ));
     AssertThatAstsMatch(prog->UseExpression(), target->UseExpression());
 }
@@ -516,9 +521,9 @@ TEST_F(ParserTest, WhileExpr)
 {
     CreateFromString("while 1 do 2");
     unique_ptr<Program> prog = parser->Parse();
-    unique_ptr<Program> target = make_unique<Program>(make_unique<WhileExpression>(
-        make_unique<IntExpression>(1),
-        make_unique<IntExpression>(2)
+    unique_ptr<Program> target = MakeTestProgram(make_unique<WhileExpression>(
+        make_unique<IntExpression>(1, Position(0,0)),
+        make_unique<IntExpression>(2, Position(0,0)), Position{0,0}
         ));
     AssertThatAstsMatch(target->UseExpression(), prog->UseExpression());
 }
@@ -527,11 +532,11 @@ TEST_F(ParserTest, ForExpr)
 {
     CreateFromString("for a := 1 to 2 do 3");
     unique_ptr<Program> prog = parser->Parse();
-    unique_ptr<Program> target = make_unique<Program>(make_unique<ForExpression>(
+    unique_ptr<Program> target = MakeTestProgram(make_unique<ForExpression>(
         SymbolFactory::GenerateSymbol("a"),
-        make_unique<IntExpression>(1),
-        make_unique<IntExpression>(2),
-        make_unique<IntExpression>(3)
+        make_unique<IntExpression>(1, Position(0,0)),
+        make_unique<IntExpression>(2, Position(0,0)),
+        make_unique<IntExpression>(3, Position(0,0)), Position{0,0}
         ));
     AssertThatAstsMatch(target->UseExpression(), prog->UseExpression());
 }
@@ -540,10 +545,10 @@ TEST_F(ParserTest, CallExprNoArgs)
 {
     CreateFromString("a()");
     unique_ptr<Program> prog = parser->Parse();
-    unique_ptr<Program> target = make_unique<Program>(make_unique<CallExpression>(
+    unique_ptr<Program> target = MakeTestProgram(make_unique<CallExpression>(
         SymbolFactory::GenerateSymbol("a"),
-        vector<unique_ptr<Expression>>()
-        ));
+        vector<unique_ptr<Expression>>(),
+        Position(0,0)));
     AssertThatAstsMatch(target->UseExpression(), prog->UseExpression());
 }
 
@@ -552,10 +557,10 @@ TEST_F(ParserTest, CallExprOneArg)
     CreateFromString("a(1)");
     unique_ptr<Program> prog = parser->Parse();
     vector<unique_ptr<Expression>> args;
-    args.push_back(make_unique<IntExpression>(1));
-    unique_ptr<Program> target = make_unique<Program>(make_unique<CallExpression>(
+    args.push_back(make_unique<IntExpression>(1, Position(0,0)));
+    unique_ptr<Program> target = MakeTestProgram(make_unique<CallExpression>(
         SymbolFactory::GenerateSymbol("a"),
-        move(args)
+        move(args), Position(0,0)
         ));
     AssertThatAstsMatch(target->UseExpression(), prog->UseExpression());
 }
@@ -566,12 +571,12 @@ TEST_F(ParserTest, CallExprManyArgs)
     CreateFromString("a(1, 2, 3)");
     unique_ptr<Program> prog = parser->Parse();
     vector<unique_ptr<Expression>> args;
-    args.push_back(make_unique<IntExpression>(1));
-    args.push_back(make_unique<IntExpression>(2));
-    args.push_back(make_unique<IntExpression>(3));
-    unique_ptr<Program> target = make_unique<Program>(make_unique<CallExpression>(
+    args.push_back(make_unique<IntExpression>(1, Position(0,0)));
+    args.push_back(make_unique<IntExpression>(2, Position(0,0)));
+    args.push_back(make_unique<IntExpression>(3, Position(0,0)));
+    unique_ptr<Program> target = MakeTestProgram(make_unique<CallExpression>(
         SymbolFactory::GenerateSymbol("a"),
-        move(args)
+        move(args), Position(0,0)
         ));
     AssertThatAstsMatch(target->UseExpression(), prog->UseExpression());
 }
@@ -583,17 +588,17 @@ TEST_F(ParserTest, BigSeq)
 
     vector<unique_ptr<Expression>> exprs;
     exprs.push_back(make_unique<AssignmentExpression>(
-        make_unique<SimpleVar>(SymbolFactory::GenerateSymbol("a")),
-        make_unique<IntExpression>(5)));
+        make_unique<SimpleVar>(SymbolFactory::GenerateSymbol("a"), Position{0,0}),
+        make_unique<IntExpression>(5, Position(0,0)), Position{0,0}));
 
     exprs.push_back(make_unique<OpExpression>(
-        make_unique<VarExpression>(make_unique<SimpleVar>(SymbolFactory::GenerateSymbol("a"))),
-        make_unique<IntExpression>(1),
-        BinOp::Plus
+        make_unique<VarExpression>(make_unique<SimpleVar>(SymbolFactory::GenerateSymbol("a"), Position{0,0}), Position{0,0}),
+        make_unique<IntExpression>(1, Position(0,0)),
+        BinOp::Plus, Position{0,0}
         ));
 
-    unique_ptr<Program> target = make_unique<Program>(
-        make_unique<SeqExpression>(move(exprs)));
+    unique_ptr<Program> target = MakeTestProgram(
+        make_unique<SeqExpression>(move(exprs), Position{0,0}));
 
     AssertThatAstsMatch(target->UseExpression(), prog->UseExpression());
 }
@@ -606,19 +611,19 @@ TEST_F(ParserTest, LetFunDecs)
     vector<FunDec> fundecs;
 
     vector<unique_ptr<Expression>> args;
-    args.push_back(make_unique<VarExpression>(make_unique<SimpleVar>(SymbolFactory::GenerateSymbol("a"))));
+    args.push_back(make_unique<VarExpression>(make_unique<SimpleVar>(SymbolFactory::GenerateSymbol("a"), Position{0,0}), Position{0,0}));
 
-    fundecs.push_back(FunDec(SymbolFactory::GenerateSymbol("f"), vector<Field>(), SymbolFactory::GenerateSymbol("int"), make_unique<CallExpression>(SymbolFactory::GenerateSymbol("g"), move(args))));
+    fundecs.push_back(FunDec(SymbolFactory::GenerateSymbol("f"), vector<Field>(), SymbolFactory::GenerateSymbol("int"), make_unique<CallExpression>(SymbolFactory::GenerateSymbol("g"), move(args), Position(0,0)), Position(0,0)));
 
-    fundecs.push_back(FunDec(SymbolFactory::GenerateSymbol("g"), { Field(SymbolFactory::GenerateSymbol("i"), SymbolFactory::GenerateSymbol("int")) }, boost::optional<Symbol>(), make_unique<CallExpression>(SymbolFactory::GenerateSymbol("f"), vector<unique_ptr<Expression>>())));
+    fundecs.push_back(FunDec(SymbolFactory::GenerateSymbol("g"), { Field(SymbolFactory::GenerateSymbol("i"), SymbolFactory::GenerateSymbol("int"), Position{0,0}) }, boost::optional<Symbol>(), make_unique<CallExpression>(SymbolFactory::GenerateSymbol("f"), vector<unique_ptr<Expression>>(), Position(0,0)), Position{0,0}));
 
     vector<unique_ptr<Declaration>> decs;
-    decs.push_back(make_unique<VarDeclaration>(SymbolFactory::GenerateSymbol("a"), boost::optional<Symbol>(), make_unique<IntExpression>(5)));
-    decs.push_back(make_unique<FunctionDeclaration>(move(fundecs)));
+    decs.push_back(make_unique<VarDeclaration>(SymbolFactory::GenerateSymbol("a"), boost::optional<Symbol>(), make_unique<IntExpression>(5, Position(0,0)), Position{0,0}));
+    decs.push_back(make_unique<FunctionDeclaration>(move(fundecs), Position{0,0}));
 
-    unique_ptr<Program> target = make_unique<Program>(make_unique<LetExpression>(
+    unique_ptr<Program> target = MakeTestProgram(make_unique<LetExpression>(
         move(decs),
-        make_unique<CallExpression>(SymbolFactory::GenerateSymbol("f"), vector<unique_ptr<Expression>>())));
+        make_unique<CallExpression>(SymbolFactory::GenerateSymbol("f"), vector<unique_ptr<Expression>>(), Position(0,0)), Position{0,0}));
 
     AssertThatAstsMatch(target->UseExpression(), prog->UseExpression());
 }
@@ -627,8 +632,8 @@ TEST_F(ParserTest, EmptyLet)
 {
     CreateFromString("let in end");
     unique_ptr<Program> prog = parser->Parse();
-    unique_ptr<Program> target = make_unique<Program>(
-        make_unique<LetExpression>(vector<unique_ptr<Declaration>>(), make_unique<SeqExpression>(vector<unique_ptr<Expression>>())));
+    unique_ptr<Program> target = MakeTestProgram(
+        make_unique<LetExpression>(vector<unique_ptr<Declaration>>(), make_unique<SeqExpression>(vector<unique_ptr<Expression>>(), Position{0,0}), Position{0,0}));
     AssertThatAstsMatch(target->UseExpression(), prog->UseExpression());
 }
 
@@ -638,14 +643,14 @@ TEST_F(ParserTest, TypeDecs)
     unique_ptr<Program> prog = parser->Parse();
 
     vector<TyDec> tyDecs;
-    tyDecs.push_back(TyDec(SymbolFactory::GenerateSymbol("tree"), make_unique<RecordType>( vector<Field>{ Field(SymbolFactory::GenerateSymbol("key"), SymbolFactory::GenerateSymbol("int")) , Field(SymbolFactory::GenerateSymbol("children"), SymbolFactory::GenerateSymbol("treelist")) } )));
-    tyDecs.push_back(TyDec(SymbolFactory::GenerateSymbol("treelist"), make_unique<RecordType>( vector<Field>{ Field(SymbolFactory::GenerateSymbol("head"), SymbolFactory::GenerateSymbol("tree")), Field(SymbolFactory::GenerateSymbol("tail"), SymbolFactory::GenerateSymbol("treelist")) } )));
+    tyDecs.push_back(TyDec(SymbolFactory::GenerateSymbol("tree"), make_unique<RecordType>( vector<Field>{ Field(SymbolFactory::GenerateSymbol("key"), SymbolFactory::GenerateSymbol("int"), Position{0,0}) , Field(SymbolFactory::GenerateSymbol("children"), SymbolFactory::GenerateSymbol("treelist"), Position{0,0}) }, Position{0,0}), Position{0,0}));
+    tyDecs.push_back(TyDec(SymbolFactory::GenerateSymbol("treelist"), make_unique<RecordType>( vector<Field>{ Field(SymbolFactory::GenerateSymbol("head"), SymbolFactory::GenerateSymbol("tree"), Position{0,0}), Field(SymbolFactory::GenerateSymbol("tail"), SymbolFactory::GenerateSymbol("treelist"), Position{0,0}) } , Position{0,0}), Position{0,0}));
 
     vector<unique_ptr<Declaration>> decls;
-    decls.push_back(make_unique<TypeDeclaration>(move(tyDecs)));
+    decls.push_back(make_unique<TypeDeclaration>(move(tyDecs), Position{0,0}));
 
-    unique_ptr<Program> target = make_unique<Program>(
-        make_unique<LetExpression>(move(decls), make_unique<SeqExpression>(vector<unique_ptr<Expression>>())));
+    unique_ptr<Program> target = MakeTestProgram(
+        make_unique<LetExpression>(move(decls), make_unique<SeqExpression>(vector<unique_ptr<Expression>>(), Position(0,0)), Position{0,0}));
     
     AssertThatAstsMatch(target->UseExpression(), prog->UseExpression());
 }

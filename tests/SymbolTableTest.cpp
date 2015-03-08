@@ -24,23 +24,29 @@ TEST_F(SymbolTableTest, NewSymTable_DoesNotContainAbitrarySymbol)
 TEST_F(SymbolTableTest, NewSymTable_AddingContainsAbitrarySymbol) 
 {
     table->BeginScope();
-    table->Insert(SymbolFactory::GenerateSymbol("a"), 4);
+    bool shadowed;
+    table->Insert(SymbolFactory::GenerateSymbol("a"), 4, shadowed);
+    ASSERT_FALSE(shadowed);
     ASSERT_TRUE(table->LookUp(SymbolFactory::GenerateSymbol("a")));
 }
 
 TEST_F(SymbolTableTest, SymbolTableErrorWhenOverwrittingExistingValue) 
 {
     table->BeginScope();
-    table->Insert(SymbolFactory::GenerateSymbol("a"), 4);
+    bool shadowed;
+    table->Insert(SymbolFactory::GenerateSymbol("a"), 4, shadowed);
+    ASSERT_FALSE(shadowed);
     // overwrites original mapping
-    EXPECT_THROW(table->Insert(SymbolFactory::GenerateSymbol("a"), 5), SemanticAnalysisException);
+    table->Insert(SymbolFactory::GenerateSymbol("a"), 5, shadowed);
+    ASSERT_TRUE(shadowed);
     ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 4);
 }
 
 TEST_F(SymbolTableTest, SymbolTableRemovedFromTableWhenOutOfScope)
 {
     table->BeginScope();
-    table->Insert(SymbolFactory::GenerateSymbol("a"), 4);
+    bool shadowed;
+    table->Insert(SymbolFactory::GenerateSymbol("a"), 4, shadowed);
     table->EndScope();
     ASSERT_FALSE(table->LookUp(SymbolFactory::GenerateSymbol("a")));
 }
@@ -48,10 +54,11 @@ TEST_F(SymbolTableTest, SymbolTableRemovedFromTableWhenOutOfScope)
 TEST_F(SymbolTableTest, SymbolTableShadowedWhenNewScope)
 {
     table->BeginScope();
-    table->Insert(SymbolFactory::GenerateSymbol("a"), 4);
+    bool shadowed;
+    table->Insert(SymbolFactory::GenerateSymbol("a"), 4, shadowed);
     {
         table->BeginScope();
-        table->Insert(SymbolFactory::GenerateSymbol("a"), 5);
+        table->Insert(SymbolFactory::GenerateSymbol("a"), 5, shadowed);
         ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 5);
         table->EndScope();
     }
@@ -60,9 +67,10 @@ TEST_F(SymbolTableTest, SymbolTableShadowedWhenNewScope)
 TEST_F(SymbolTableTest, SymbolTableBackToOrigianlWhenBackToOriginalScope)
 {
     table->BeginScope();
-    table->Insert(SymbolFactory::GenerateSymbol("a"), 4);
+    bool shadowed;
+    table->Insert(SymbolFactory::GenerateSymbol("a"), 4, shadowed);
     table->BeginScope();
-    table->Insert(SymbolFactory::GenerateSymbol("a"), 5);
+    table->Insert(SymbolFactory::GenerateSymbol("a"), 5, shadowed);
     ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 5);
     table->EndScope();
     ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 4);
@@ -71,9 +79,10 @@ TEST_F(SymbolTableTest, SymbolTableBackToOrigianlWhenBackToOriginalScope)
 TEST_F(SymbolTableTest, SymbolTableCanGetValueFromOuterScopeIfNotShadowed)
 {
     table->BeginScope();
-    table->Insert(SymbolFactory::GenerateSymbol("a"), 4);
+    bool shadowed;
+    table->Insert(SymbolFactory::GenerateSymbol("a"), 4, shadowed);
     table->BeginScope();
-    table->Insert(SymbolFactory::GenerateSymbol("b"), 5);
+    table->Insert(SymbolFactory::GenerateSymbol("b"), 5, shadowed);
     ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 4);
 }
 

@@ -1,17 +1,15 @@
-add_library( Lexer
+add_library( FrontEnd
 	Tokens.cpp
     TokenStream.cpp
     Position.cpp
     PositionCountingStream.cpp
     Lexer.cpp
-)
-
-add_library ( Parser
     AST.cpp
     Parser.cpp
     Symbol.cpp
     Types.cpp
     Environments.cpp
+    CompileTimeErrorHandler.cpp
 )
 
 add_executable( Main
@@ -19,8 +17,7 @@ add_executable( Main
 )
 
 target_link_libraries( Main
-    Lexer
-    Parser
+    FrontEnd
     ${Boost_LIBRARIES}
 )
 

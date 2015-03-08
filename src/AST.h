@@ -2,6 +2,7 @@
 #include "Environments.h"
 #include "Position.h"
 #include "Symbol.h"
+#include "CompileTimeErrorHandler.h"
 
 #include <memory>
 #include <string>
@@ -31,12 +32,15 @@ struct Field
     Symbol name;
     bool escape;
     Symbol type;
+    Position position;
 
-    Field(const Symbol& nm, const Symbol& ty)
+    Field(const Symbol& nm, const Symbol& ty, const Position& pos)
         : name(nm)
         , escape(true)
         , type(ty)
-    {}
+        , position(pos)
+    {
+    }
 };
 
 struct AstNode
@@ -45,13 +49,6 @@ struct AstNode
     {
         return m_position;
     }
-
-    virtual void SetPosition(const Position& position)
-    {
-        m_position = position;
-    }
-
-    virtual void ReportError(std::string& message);
 
     virtual Type TypeCheck() = 0;
     
@@ -65,21 +62,35 @@ struct AstNode
     {
         if (!valEnv || !tyEnv)
         {
-            throw CompilerErrorException("Internal compiler error: Attempt to set internal environment to invalid value");
+            throw CompilerErrorException("Attempt to set internal environment to invalid value");
         }
 
         m_valueEnvironment = valEnv;
         m_typeEnvironment = tyEnv;
     }
 
-    std::shared_ptr<ValueEnvironment>& UseValueEnvironment()
+    virtual std::shared_ptr<ValueEnvironment>& UseValueEnvironment()
     {
         return m_valueEnvironment;
     }
 
-    std::shared_ptr<TypeEnvironment>& UseTypeEnvironment()
+    virtual std::shared_ptr<TypeEnvironment>& UseTypeEnvironment()
     {
         return m_typeEnvironment;
+    }
+
+    virtual std::shared_ptr<CompileTimeErrorReporter>& UseErrorReporter();
+
+    virtual std::shared_ptr<WarningReporter>& UseWarningReporter();
+
+    void SetStaticErrorReporters(const std::shared_ptr<CompileTimeErrorReporter>& errReporter, const std::shared_ptr<WarningReporter>& warningReporter);
+
+    virtual void ReportTypeError(const std::string message);
+
+protected:
+    virtual void SetPosition(const Position& position)
+    {
+        m_position = position;
     }
 
 private:
@@ -87,6 +98,10 @@ private:
 
     std::shared_ptr<ValueEnvironment> m_valueEnvironment;
     std::shared_ptr<TypeEnvironment> m_typeEnvironment;
+
+    // TODO: this is hacky. These should be wired up correctly, not static.
+    static std::shared_ptr<CompileTimeErrorReporter> m_errorReporter;
+    static std::shared_ptr<WarningReporter> m_warningReporter;
 };
 
 struct Expression : public AstNode {};
@@ -100,15 +115,30 @@ struct TypeNode : public AstNode {};
 class Program
 {
 public:
-    Program(std::unique_ptr<Expression>&& expr, const std::shared_ptr<ValueEnvironment>& valEnv, const std::shared_ptr<TypeEnvironment>& typeEnv)
+    Program(
+            std::unique_ptr<Expression>&& expr,
+            const std::shared_ptr<ValueEnvironment>& valEnv,
+            const std::shared_ptr<TypeEnvironment>& typeEnv,
+            const std::shared_ptr<CompileTimeErrorReporter>& errorReporter,
+            const std::shared_ptr<WarningReporter>& warningReporter)
         : m_expression(std::move(expr))
         , m_valueEnvironment(valEnv)
         , m_typeEnvironment(typeEnv)
+        , m_errorReporter(errorReporter)
+        , m_warningReporter(warningReporter)
     {
+        m_expression->SetStaticErrorReporters(errorReporter, warningReporter);
     }
 
-    Program(std::unique_ptr<Expression>&& expr)
-        : Program(std::move(expr), ValueEnvironment::GenerateBaseValueEnvironment(), TypeEnvironment::GenerateBaseTypeEnvironment())
+    Program(
+            std::unique_ptr<Expression>&& expr,
+            const std::shared_ptr<CompileTimeErrorReporter>& errorReporter,
+            const std::shared_ptr<WarningReporter>& warningReporter)
+        : Program(std::move(expr)
+        , ValueEnvironment::GenerateBaseValueEnvironment()
+        , TypeEnvironment::GenerateBaseTypeEnvironment()
+        , errorReporter
+        , warningReporter)
     {
     }
 
@@ -123,14 +153,19 @@ private:
     std::unique_ptr<Expression> m_expression;
     std::shared_ptr<ValueEnvironment> m_valueEnvironment;
     std::shared_ptr<TypeEnvironment> m_typeEnvironment;
+    std::shared_ptr<CompileTimeErrorReporter> m_errorReporter;
+    std::shared_ptr<WarningReporter> m_warningReporter;
 };
 
 struct SimpleVar
     : public Var
 {
     Symbol symbol;
-    SimpleVar(const Symbol& sym)
-        : symbol(sym) {}
+    SimpleVar(const Symbol& sym, const Position& pos)
+        : symbol(sym) 
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -139,9 +174,12 @@ struct FieldVar
 {
     Symbol symbol;
     std::unique_ptr<Var> var;
-    FieldVar(const Symbol& sym, std::unique_ptr<Var>&& invar)
+    FieldVar(const Symbol& sym, std::unique_ptr<Var>&& invar, const Position& pos)
         : symbol(sym)
-        , var(std::move(invar)) {}
+        , var(std::move(invar))
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -150,9 +188,12 @@ struct SubscriptVar
 {
     std::unique_ptr<Var> var;
     std::unique_ptr<Expression> expression; 
-    SubscriptVar(std::unique_ptr<Var>&& inVar, std::unique_ptr<Expression>&& exp)
+    SubscriptVar(std::unique_ptr<Var>&& inVar, std::unique_ptr<Expression>&& exp, const Position& pos)
         : var(std::move(inVar))
-        , expression(std::move(exp)) {}
+        , expression(std::move(exp)) 
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -160,14 +201,21 @@ struct VarExpression
     : public Expression
 {
     std::unique_ptr<Var> var;
-    VarExpression(std::unique_ptr<Var>&& inVar)
-        : var(std::move(inVar)) {}
+    VarExpression(std::unique_ptr<Var>&& inVar, const Position& pos)
+        : var(std::move(inVar)) 
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
 struct NilExpression
     : public Expression
 { 
+    NilExpression(const Position& pos)
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -175,8 +223,11 @@ struct IntExpression
     : public Expression
 {
     int value;
-    IntExpression(int val)
-        : value(val) {}
+    IntExpression(int val, const Position& pos)
+        : value(val)
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -184,8 +235,11 @@ struct StringExpression
     : public Expression
 {
     std::string value;
-    StringExpression(const std::string& val)
-        : value(val) {}
+    StringExpression(const std::string& val, const Position& pos)
+        : value(val)
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -194,9 +248,12 @@ struct CallExpression
 {
     Symbol function;
     std::vector<std::unique_ptr<Expression>> args;
-    CallExpression(const Symbol& fn, std::vector<std::unique_ptr<Expression>>&& ars)
+    CallExpression(const Symbol& fn, std::vector<std::unique_ptr<Expression>>&& ars, const Position& pos)
         : function(fn)
-        , args(std::move(ars)) {}
+        , args(std::move(ars))
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -206,10 +263,13 @@ struct OpExpression
     std::unique_ptr<Expression> lhs;
     std::unique_ptr<Expression> rhs;
     BinOp op;
-    OpExpression(std::unique_ptr<Expression>&& ls, std::unique_ptr<Expression>&& rs, BinOp oper)
+    OpExpression(std::unique_ptr<Expression>&& ls, std::unique_ptr<Expression>&& rs, BinOp oper, const Position& pos)
         : lhs(std::move(ls))
         , rhs(std::move(rs))
-        , op(oper) {}
+        , op(oper)
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -217,10 +277,12 @@ struct FieldExp
 {
     Symbol field;
     std::unique_ptr<Expression> expr;
+    Position position;
 
-    FieldExp(const Symbol& fld, std::unique_ptr<Expression>&& ex)
+    FieldExp(const Symbol& fld, std::unique_ptr<Expression>&& ex, const Position& pos)
         : field(fld)
         , expr(std::move(ex))
+        , position(pos)
     {}
 };
 
@@ -229,9 +291,12 @@ struct RecordExpression
 {
     Symbol type;
     std::vector<FieldExp> fields;
-    RecordExpression(const Symbol& ty, std::vector<FieldExp>&& flds)
+    RecordExpression(const Symbol& ty, std::vector<FieldExp>&& flds, const Position& pos)
         : type(ty)
-        , fields(std::move(flds)) {}
+        , fields(std::move(flds))
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -239,8 +304,11 @@ struct SeqExpression
     : public Expression
 {
     std::vector<std::unique_ptr<Expression>> expressions;
-    SeqExpression(std::vector<std::unique_ptr<Expression>>&& expr)
-        : expressions(std::move(expr)) {}
+    SeqExpression(std::vector<std::unique_ptr<Expression>>&& expr, const Position& pos)
+        : expressions(std::move(expr))
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -249,9 +317,12 @@ struct AssignmentExpression
 {
     std::unique_ptr<Var> var;
     std::unique_ptr<Expression> expression;
-    AssignmentExpression(std::unique_ptr<Var>&& v, std::unique_ptr<Expression> expr)
+    AssignmentExpression(std::unique_ptr<Var>&& v, std::unique_ptr<Expression> expr, const Position& pos)
         : var(std::move(v))
-        , expression(std::move(expr)) {}
+        , expression(std::move(expr))
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -265,11 +336,14 @@ struct IfExpression
     IfExpression(
             std::unique_ptr<Expression>&& t,
             std::unique_ptr<Expression>&& thn,
-            std::unique_ptr<Expression>&& els)
+            std::unique_ptr<Expression>&& els,
+            const Position& pos)
         : test(std::move(t))
         , thenBranch(std::move(thn))
         , elseBranch(std::move(els))
-    {}
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -279,9 +353,12 @@ struct WhileExpression
     std::unique_ptr<Expression> test;
     std::unique_ptr<Expression> body;
 
-    WhileExpression(std::unique_ptr<Expression>&& t, std::unique_ptr<Expression>&& b)
+    WhileExpression(std::unique_ptr<Expression>&& t, std::unique_ptr<Expression>&& b, const Position& pos)
         : test(std::move(t))
-        , body(std::move(b)) {}
+        , body(std::move(b))
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -294,18 +371,25 @@ struct ForExpression
     std::unique_ptr<Expression> high;
     std::unique_ptr<Expression> body;
 
-    ForExpression(const Symbol& v, std::unique_ptr<Expression>&& l, std::unique_ptr<Expression>&& h, std::unique_ptr<Expression>&& b)
+    ForExpression(const Symbol& v, std::unique_ptr<Expression>&& l, std::unique_ptr<Expression>&& h, std::unique_ptr<Expression>&& b, const Position& pos)
         : var(v)
         , escape(true)
         , low(move(l))
         , high(move(h))
-        , body(move(b)) {}
+        , body(move(b))
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
 struct BreakExpression
     : public Expression
 {
+    BreakExpression(const Position& pos)
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -315,10 +399,12 @@ struct LetExpression
     std::vector<std::unique_ptr<Declaration>> decls;
     std::unique_ptr<Expression> body;
 
-    LetExpression(std::vector<std::unique_ptr<Declaration>>&& decs, std::unique_ptr<Expression>&& bdy)
+    LetExpression(std::vector<std::unique_ptr<Declaration>>&& decs, std::unique_ptr<Expression>&& bdy, const Position& pos)
         : decls(std::move(decs))
         , body(std::move(bdy))
-        {}
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -329,11 +415,13 @@ struct ArrayExpression
     std::unique_ptr<Expression> size;
     std::unique_ptr<Expression> init;
 
-    ArrayExpression(const Symbol& id, std::unique_ptr<Expression>&& sz, std::unique_ptr<Expression>&& val)
+    ArrayExpression(const Symbol& id, std::unique_ptr<Expression>&& sz, std::unique_ptr<Expression>&& val, const Position& pos)
         : type(id)
         , size(std::move(sz))
         , init(std::move(val))
-        {}
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -343,13 +431,16 @@ struct FunDec
     std::vector<Field> fields;
     boost::optional<Symbol> resultTy;
     std::unique_ptr<Expression> body;
+    Position position;
 
-    FunDec(const Symbol& nam, std::vector<Field>&& flds, boost::optional<Symbol> ty, std::unique_ptr<Expression>&& bdy)
+    FunDec(const Symbol& nam, std::vector<Field>&& flds, boost::optional<Symbol> ty, std::unique_ptr<Expression>&& bdy, const Position& pos)
         : name(nam)
         , fields(std::move(flds))
         , resultTy(ty)
         , body(std::move(bdy))
-    {}
+        , position(pos)
+    {
+    }
 };
 
 struct FunctionDeclaration
@@ -357,8 +448,11 @@ struct FunctionDeclaration
 {
     std::vector<FunDec> decls;
 
-    FunctionDeclaration(std::vector<FunDec>&& decs)
-        : decls(std::move(decs)) {}
+    FunctionDeclaration(std::vector<FunDec>&& decs, const Position& pos)
+        : decls(std::move(decs))
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -370,12 +464,15 @@ struct VarDeclaration
    boost::optional<Symbol> type;
    std::unique_ptr<Expression> init;
 
-   VarDeclaration(const Symbol& id, boost::optional<Symbol> ty, std::unique_ptr<Expression>&& it)
+   VarDeclaration(const Symbol& id, boost::optional<Symbol> ty, std::unique_ptr<Expression>&& it, const Position& pos)
     : name(id)
     , escape(true)
     , type(ty)
     , init(std::move(it))
-   {}
+    {
+        SetPosition(pos);
+    }
+
     Type TypeCheck() override;
 };
 
@@ -383,9 +480,11 @@ struct TyDec
 {
     Symbol name;
     std::unique_ptr<TypeNode> type;
-    TyDec(const Symbol& id, std::unique_ptr<TypeNode>&& ty)
+    Position position;
+    TyDec(const Symbol& id, std::unique_ptr<TypeNode>&& ty, const Position& pos)
         : name(id)
         , type(std::move(ty))
+        , position(pos)
     {}
 };
 
@@ -394,9 +493,12 @@ struct TypeDeclaration
 {
     std::vector<TyDec> types;
 
-    TypeDeclaration(std::vector<TyDec>&& ty)
+    TypeDeclaration(std::vector<TyDec>&& ty, const Position& pos)
         : types(std::move(ty))
-    {}
+    {
+        SetPosition(pos);
+    }
+
     Type TypeCheck() override;
 };
 
@@ -405,8 +507,11 @@ struct NameType
 {
     Symbol name;
 
-    NameType(const Symbol& id)
-        : name(id) {}
+    NameType(const Symbol& id, const Position& pos)
+        : name(id)
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -415,8 +520,11 @@ struct RecordType
 {
     std::vector<Field> fields;
 
-    RecordType(std::vector<Field>&& flds)
-        : fields(std::move(flds)) {}
+    RecordType(std::vector<Field>&& flds, const Position& pos)
+        : fields(std::move(flds))
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 
@@ -425,8 +533,11 @@ struct ArrayType
 {
     Symbol name;
 
-    ArrayType(const Symbol& id)
-        : name(id) {}
+    ArrayType(const Symbol& id, const Position& pos)
+        : name(id)
+    {
+        SetPosition(pos);
+    }
     Type TypeCheck() override;
 };
 

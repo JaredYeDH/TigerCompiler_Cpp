@@ -35,3 +35,9 @@ bool Position::operator<(const Position& other) const
     return GetRow() < other.GetRow() || (GetRow() == other.GetRow() && GetColumn() < other.GetColumn());
 }
 
+
+std::ostream& operator<< (std::ostream& out, const Position& pos)
+{
+    out << "Line: " << pos.GetRow() << " Column: " << pos.GetColumn();
+    return out;
+}

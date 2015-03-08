@@ -31,7 +31,9 @@ public:
 		{
 			if (is_regular_file(p) && boost::algorithm::ends_with(p.filename().string(), ".tig"))
 			{
-				Parser parser = Parser::CreateParserForFile(p.string());
+                std::shared_ptr<CompileTimeErrorReporter> errorReporter = std::make_shared<CompileTimeErrorReporter>();
+                std::shared_ptr<WarningReporter> warningReporter = std::make_shared<WarningReporter>();
+				Parser parser = Parser::CreateParserForFile(p.string(), errorReporter, warningReporter);
 				try
 				{
 					auto prog = parser.Parse();
@@ -54,6 +56,10 @@ public:
 					std::cout << t.what() << " thrown in " << p.filename().string() << "\n";
                     allPassed = false;
 				}
+
+                std::cerr << "++++++++++++++ " << p.filename().string() << " +++++++++++++\n";
+                errorReporter->ReportAllGivenErrors();
+                warningReporter->ReportAllWarningsAtOrBelowLevel(WarningLevel::High);
 			}
 		}
 

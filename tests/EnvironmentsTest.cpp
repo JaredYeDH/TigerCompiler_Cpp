@@ -21,7 +21,8 @@ TEST_F(EnvTest, BaseTypeEnvironment_ContainsString)
 TEST_F(EnvTest, BaseTypeEnvironment_AddWorksAsExpected)
 {
     auto tyTest = TypeEnvironment::GenerateBaseTypeEnvironment();
-    tyTest->Insert(SymbolFactory::GenerateSymbol("foo"), TypeFactory::MakeIntType());
+    bool shadowed;
+    tyTest->Insert(SymbolFactory::GenerateSymbol("foo"), TypeFactory::MakeIntType(), shadowed);
     ASSERT_TRUE(tyTest->LookUp(SymbolFactory::GenerateSymbol("foo")));
 }
 

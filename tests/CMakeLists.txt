@@ -21,8 +21,7 @@ add_executable( AllTests
     ${test_sources})
 
 target_link_libraries( AllTests
-    Lexer
-    Parser
+    FrontEnd
     gtest_main
     ${Boost_LIBRARIES}
 )

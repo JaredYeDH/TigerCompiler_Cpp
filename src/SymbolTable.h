@@ -10,7 +10,7 @@
 template <typename Type>
 struct ISymbolTable
 {
-    virtual void Insert(const Symbol& symbol, const Type& entry) = 0;
+    virtual void Insert(const Symbol& symbol, const Type& entry, bool& overwrite) = 0;
     virtual boost::optional<Type> LookUp(const Symbol& symbol) const = 0;
     virtual void BeginScope() = 0;
     virtual void EndScope() = 0;
@@ -24,8 +24,9 @@ class SymbolTable
     : public ISymbolTable<Type>
 {
 public:
-    void Insert(const Symbol& symbol, const Type& entry) override
+    void Insert(const Symbol& symbol, const Type& entry, bool& overwrite) override
     {
+        overwrite = false;
         if (m_scopeStack.empty())
         {
             throw CompilerErrorException("Attempt to add symbol to symbol table with no scope setup. This is a compiler bug.");
@@ -38,7 +39,7 @@ public:
             // Warn about overwriting symbols
             if (LookUp(symbol) != entry)
             {
-                throw SemanticAnalysisException("Overwrite of symbol in symboltable");
+                overwrite = true;
             }
             else
             {

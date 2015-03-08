@@ -2,9 +2,29 @@
 
 using namespace AST;
 
-void AstNode::ReportError(std::string& message)
+std::shared_ptr<CompileTimeErrorReporter> AstNode::m_errorReporter;
+std::shared_ptr<WarningReporter> AstNode::m_warningReporter;
+
+void AstNode::SetStaticErrorReporters(const std::shared_ptr<CompileTimeErrorReporter>& errReporter, const std::shared_ptr<WarningReporter>& warningReporter)
 {
-    throw SemanticAnalysisException(message.c_str());
+    m_errorReporter = errReporter;
+    m_warningReporter = warningReporter;
+}
+
+void AstNode::ReportTypeError(const std::string message)
+{
+    Error err { ErrorType::TypeError, UsePosition(), message };
+    UseErrorReporter()->AddError(err);
+}
+
+std::shared_ptr<CompileTimeErrorReporter>& AstNode::UseErrorReporter()
+{
+    return m_errorReporter;
+}
+
+std::shared_ptr<WarningReporter>& AstNode::UseWarningReporter()
+{
+    return m_warningReporter;
 }
 
 Type Program::TypeCheck()
@@ -22,7 +42,9 @@ Type SimpleVar::TypeCheck()
     if (!ty)
     {
         std::string error = "Unidentified variable " + symbol.UseName();
-        ReportError(error);
+        ReportTypeError(error);
+        // error correct
+        ty = std::make_shared<VarEntry>(TypeFactory::MakeIntType());
     }
     if ((*ty)->IsFunction())
     {
@@ -50,7 +72,9 @@ Type FieldVar::TypeCheck()
     if (!ty)
     {
         std::string msg = "attempt to get field of non-record or use of non-existant field";
-        ReportError(msg);
+        ReportTypeError(msg);
+        // error correct
+        ty = TypeFactory::MakeIntType();
     }
     return *ty;
 }
@@ -71,19 +95,21 @@ Type SubscriptVar::TypeCheck()
     if (!Types::IsArrayType(varTy))
     {
         std::string msg = "Attempt to subscript non-array type";
-        ReportError(msg);
+        ReportTypeError(msg);
     }
     else if (!AreEqualTypes(TypeFactory::MakeIntType(), expTy))
     {
         std::string msg = "Attempt to subscript with non-int";
-        ReportError(msg);
+        ReportTypeError(msg);
     }
 
     auto ty = Types::GetTypeOfArray(varTy);
     if (!ty)
     {
         std::string msg = "Attempt to get type of array of non-array type";
-        ReportError(msg);
+        ReportTypeError(msg);
+        // error correct
+        ty = TypeFactory::MakeArrayType(TypeFactory::MakeIntType());
     }
     return *ty;
 }
@@ -131,13 +157,15 @@ Type CallExpression::TypeCheck()
     if (!symTyRaw)
     {
         std::string msg = "attempt to call non-existant function";
-        ReportError(msg);
+        ReportTypeError(msg);
+        // error correct
+        symTyRaw = std::make_shared<FunEntry>(std::vector<Type>{}, TypeFactory::MakeIntType());
     }
 
     if (!(*symTyRaw)->IsFunction())
     {
         std::string msg = "attempt to call non function";
-        ReportError(msg);
+        ReportTypeError(msg);
     }
 
     const auto& formals = (*symTyRaw)->UseFormals();
@@ -145,7 +173,9 @@ Type CallExpression::TypeCheck()
     if (formals.size() != args.size())
     {
         std::string msg = "Type of arguments do not match";
-        ReportError(msg);
+        ReportTypeError(msg);
+        // error correct
+        return ty;
     }
 
     for (unsigned int i = 0 ; i < args.size(); ++i)
@@ -156,7 +186,7 @@ Type CallExpression::TypeCheck()
         if (!AreEqualTypes(argTy, formals[i]))
         {
             std::string msg = "Type of argument does not match";
-            ReportError(msg);
+            ReportTypeError(msg);
         }
     }
 
@@ -175,14 +205,14 @@ Type OpExpression::TypeCheck()
     if (!AreEqualTypes(leftType, rightType))
     {
         std::string message = "Left and right types do not match";
-        ReportError(message);
+        ReportTypeError(message);
     }
 
     if (!AreEqualTypes(leftType, TypeFactory::MakeIntType())
         && !AreEqualTypes(leftType, TypeFactory::MakeStringType()))
     {
         std::string message = "Attempt to use binary op on non int or string";
-        ReportError(message);
+        ReportTypeError(message);
     }
     return leftType;
 }
@@ -196,7 +226,9 @@ Type RecordExpression::TypeCheck()
     if (!expectTyWrapper)
     {
         std::string msg("attempt to create instance of record of non existing type");
-        ReportError(msg);
+        ReportTypeError(msg);
+        // error correct
+        expectTyWrapper = EnvType(TypeFactory::MakeIntType());
     }
     Type expectedType = expectTyWrapper->UseType();
 
@@ -211,7 +243,7 @@ Type RecordExpression::TypeCheck()
     std::string errorMessage;
     if (!Types::IsRecordTypeWithMatchingFields(expectedType, fieldTypes, errorMessage))
     {
-        ReportError(errorMessage);
+        ReportTypeError(errorMessage);
     }
 
     // TODO: what type should this return?
@@ -246,7 +278,7 @@ Type AssignmentExpression::TypeCheck()
     if (!AreEqualTypes(varType, expType))
     {
         std::string message = "Type mismatch in AssignmentExpression";
-        ReportError(message);
+        ReportTypeError(message);
     }
 
     return TypeFactory::MakeUnitType();
@@ -263,7 +295,7 @@ Type IfExpression::TypeCheck()
     if (!AreEqualTypes(testTy, TypeFactory::MakeIntType()))
     {
         std::string message = "If condition of non-int type";
-        ReportError(message);
+        ReportTypeError(message);
     }
 
     Type thenTy = thenBranch->TypeCheck();
@@ -273,7 +305,7 @@ Type IfExpression::TypeCheck()
         if (!AreEqualTypes(thenTy, elseBranch->TypeCheck()))
         {
             std::string msg = "If-then-else where then and else branch types do not match";
-            ReportError(msg);
+            ReportTypeError(msg);
         }
         return thenTy;
     }
@@ -294,7 +326,7 @@ Type WhileExpression::TypeCheck()
     if (!AreEqualTypes(TypeFactory::MakeIntType(), test->TypeCheck()))
     {
         std::string message = "while expression with non-integer test";
-        ReportError(message);
+        ReportTypeError(message);
     }
     body->TypeCheck();
     return TypeFactory::MakeUnitType();
@@ -312,18 +344,24 @@ Type ForExpression::TypeCheck()
     if (!AreEqualTypes(lTy, hTy) && !AreEqualTypes(lTy, TypeFactory::MakeIntType()))
     {
         std::string msg = "for expression with ranges not of int type";
-        ReportError(msg);
+        ReportTypeError(msg);
     }
 
     UseValueEnvironment()->BeginScope();
     {
-        UseValueEnvironment()->Insert(var, std::make_shared<VarEntry>(lTy));
+        bool shadowed;
+        UseValueEnvironment()->Insert(var, std::make_shared<VarEntry>(lTy), shadowed);
+        if (shadowed)
+        {
+            ErrorMsg err("Shadowing of " + var.UseName());
+            UseWarningReporter()->AddWarning({UsePosition(), err, WarningLevel::Low});
+        }
         body->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
         Type unit = TypeFactory::MakeUnitType();
         if (!AreEqualTypes(unit, body->TypeCheck()))
         {
             std::string msg = "for expression with body of non unit type";
-            ReportError(msg);
+            ReportTypeError(msg);
         }
     }
     UseValueEnvironment()->EndScope();
@@ -377,20 +415,20 @@ Type ArrayExpression::TypeCheck()
     if (!AreEqualTypes(TypeFactory::MakeIntType(), sizeTy))
     {
         std::string msg = "Can not use non-init type for size of array";
-        ReportError(msg);
+        ReportTypeError(msg);
     }
     
     auto tyTy = UseTypeEnvironment()->LookUp(type);
     if (!tyTy)
     {
         std::string msg = "Attempt to use non-existant type for type of array";
-        ReportError(msg);
+        ReportTypeError(msg);
     }
 
     if (!AreEqualTypes(tyTy->UseType(), initTy))
     {
         std::string msg = "Init for array does not match type of array";
-        ReportError(msg);
+        ReportTypeError(msg);
     }
 
     // TODO: what type is an array expression?
@@ -399,7 +437,7 @@ Type ArrayExpression::TypeCheck()
 
 // Will not add the funentry to the environment. This promises to leave the
 // environments as they where when you passed them in when it's done.
-std::shared_ptr<FunEntry> CheckFunctionDecl(std::shared_ptr<ValueEnvironment>& valEnv, std::shared_ptr<TypeEnvironment>& tyEnv, const FunDec& decl)
+std::shared_ptr<FunEntry> CheckFunctionDecl(const std::shared_ptr<CompileTimeErrorReporter>& errorReporter, const std::shared_ptr<WarningReporter>& warningReporter, std::shared_ptr<ValueEnvironment>& valEnv, std::shared_ptr<TypeEnvironment>& tyEnv, const FunDec& decl)
 {
     // vector<Field> fields
     // optional<Symbol> resultTy
@@ -412,13 +450,25 @@ std::shared_ptr<FunEntry> CheckFunctionDecl(std::shared_ptr<ValueEnvironment>& v
 
     for (const Field& field : decl.fields)
     {
-        auto formalType = tyEnv->LookUp(field.name);
+        auto formalType = tyEnv->LookUp(field.type);
         if (!formalType)
         {
-            throw SemanticAnalysisException("Formal function argument is of non-existant type");
+            std::stringstream msg;
+            msg << "Formal function argument " <<  field.name.UseName() << " is of non-existant type";
+            Error err { ErrorType::TypeError, decl.position, msg.str()};
+            errorReporter->AddError(err);
+            // error correcting
+            formalType = EnvType{TypeFactory::MakeIntType()};
+        }
+    
+        bool shadowed;
+        valEnv->Insert(field.name, std::make_shared<VarEntry>(formalType->UseType()), shadowed);
+        if (shadowed)
+        {
+            ErrorMsg err("Shadowing of " + field.name.UseName());
+            warningReporter->AddWarning({field.position, err, WarningLevel::Low});
         }
 
-        valEnv->Insert(field.name, std::make_shared<VarEntry>(formalType->UseType()));
         formals.push_back(formalType->UseType());
     }
 
@@ -429,11 +479,16 @@ std::shared_ptr<FunEntry> CheckFunctionDecl(std::shared_ptr<ValueEnvironment>& v
         auto resultTy = tyEnv->LookUp(*decl.resultTy);
         if (!resultTy)
         {
-            throw SemanticAnalysisException("Listed result type of function is non-existant");
+            Error err { ErrorType::TypeError, decl.position, "Listed result type of function is non-existant"};
+            errorReporter->AddError(err);
+ 
         }
         if (!AreEqualTypes(resultTy->UseType(), actualType))
         {
-            throw SemanticAnalysisException("Actual type of function does not match listed");
+            Error err { ErrorType::TypeError, decl.position, "Actual type of function does not match listed"};
+            errorReporter->AddError(err);
+ 
+
         }
     }
 
@@ -451,8 +506,16 @@ Type FunctionDeclaration::TypeCheck()
     // TODO: Recursive decls
     for (const auto& decl : decls)
     {
-        std::shared_ptr<FunEntry> fun = CheckFunctionDecl(UseValueEnvironment(), UseTypeEnvironment(), decl);
-        UseValueEnvironment()->Insert(decl.name, fun);
+        std::shared_ptr<FunEntry> fun = CheckFunctionDecl(UseErrorReporter(), UseWarningReporter(), UseValueEnvironment(), UseTypeEnvironment(), decl);
+
+        bool shadowed;
+        UseValueEnvironment()->Insert(decl.name, fun, shadowed);
+        if (shadowed)
+        {
+            ErrorMsg err("Shadowing of " + decl.name.UseName());
+            UseWarningReporter()->AddWarning({decl.position, err, WarningLevel::Low});
+        }
+
     }
     return TypeFactory::MakeUnitType();
 }
@@ -471,21 +534,27 @@ Type VarDeclaration::TypeCheck()
         if (!ty)
         {
             std::string message = "Use of non-existant type in type annotation in var declaration";
-            ReportError(message);
+            ReportTypeError(message);
         }
         else if (!AreEqualTypes(experTy, ty->UseType()))
         {
             std::string message = "Un-matched types in var declaration";
-            ReportError(message);
+            ReportTypeError(message);
         }
     }
     else if (AreEqualTypes(experTy, TypeFactory::MakeNilType()))
     {
         std::string message = "Must use long form of var dec if init expression is nil";
-        ReportError(message);
+        ReportTypeError(message);
     }
     
-    UseValueEnvironment()->Insert(name, std::make_shared<VarEntry>(experTy));
+    bool shadowed;
+    UseValueEnvironment()->Insert(name, std::make_shared<VarEntry>(experTy), shadowed);
+    if (shadowed)
+    {
+        ErrorMsg err("Shadowing of " + name.UseName());
+        UseWarningReporter()->AddWarning({UsePosition(), err, WarningLevel::Low});
+    }
 
     return TypeFactory::MakeUnitType();
 }
@@ -499,7 +568,14 @@ Type TypeDeclaration::TypeCheck()
     {
         tyDec.type->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
         Type ty = tyDec.type->TypeCheck();
-        UseTypeEnvironment()->Insert(tyDec.name, ty);
+
+        bool shadowed;
+        UseTypeEnvironment()->Insert(tyDec.name, ty, shadowed);
+        if (shadowed)
+        {
+            ErrorMsg err("Shadowing of " + tyDec.name.UseName());
+            UseWarningReporter()->AddWarning({tyDec.position, err, WarningLevel::Low});
+        }
     }
 
     // TODO: does this return something different?
@@ -526,7 +602,9 @@ Type RecordType::TypeCheck()
         if (!ty)
         {
             std::string msg = "Attempt to make record with non existant type";
-            ReportError(msg);
+            ReportTypeError(msg);
+            // error correct
+            ty = TypeFactory::MakeIntType();
         }
         record.push_back({field.name, ty->UseType()});
     }
@@ -542,7 +620,7 @@ Type ArrayType::TypeCheck()
     if (!ty)
     {
         std::string msg = "Type checking arraytype with non bound name for type";
-        ReportError(msg);
+        ReportTypeError(msg);
     }
     Type type = ty->UseType();
     return TypeFactory::MakeArrayType(type);

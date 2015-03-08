@@ -3,11 +3,20 @@
 #include "common.h"
 #include "TokenStream.h"
 
+#include "CompileTimeErrorHandler.h"
+
 class Parser
 {
 public:
-    Parser(TokenStream&& tokenStream);
-    static Parser CreateParserForFile(const std::string& file);
+    Parser(
+            TokenStream&& tokenStream,
+            const std::shared_ptr<CompileTimeErrorReporter>& errorReporter,
+            const std::shared_ptr<WarningReporter>& warningReporter);
+
+    static Parser CreateParserForFile(
+            const std::string& file,
+            const std::shared_ptr<CompileTimeErrorReporter>& errorReporter,
+            const std::shared_ptr<WarningReporter>& warningReporter);
 
     std::unique_ptr<AST::Program> Parse();
 private:
@@ -37,5 +46,7 @@ private:
 
 
     TokenStream m_tokenStream;
+    std::shared_ptr<CompileTimeErrorReporter> m_errorReporter;
+    std::shared_ptr<WarningReporter> m_warningReporter;
 };
 

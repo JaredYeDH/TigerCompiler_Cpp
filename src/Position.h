@@ -1,5 +1,6 @@
 #pragma once
 #include "common.h"
+#include <ostream>
 
 class Position
 {
@@ -12,6 +13,8 @@ public:
     bool operator==(const Position& other) const;
     bool operator!=(const Position& other) const;
     bool operator<(const Position& other) const;
+
+    friend std::ostream& operator<< (std::ostream& out, const Position& pos);
     
 private:
     uint64_t m_row;
