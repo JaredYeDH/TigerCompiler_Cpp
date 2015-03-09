@@ -40,4 +40,6 @@ private:
     bool HasMoreToLex();
 
 	Lexer() = delete;
+
+    Position m_currentStartPos {0,0};
 }; 

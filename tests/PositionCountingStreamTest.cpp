@@ -98,4 +98,3 @@ TEST_F(PCSTest, MultipleColumnAdvanceComplex)
     stream.get();
     ASSERT_EQ(Position(4,2), stream.GetCurrentPosition());
 }
-
