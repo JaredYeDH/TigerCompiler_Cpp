@@ -10,6 +10,7 @@ add_library( FrontEnd
     Types.cpp
     Environments.cpp
     CompileTimeErrorHandler.cpp
+    ErrorCodes.cpp
 )
 
 add_executable( Main

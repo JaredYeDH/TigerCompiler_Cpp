@@ -85,7 +85,7 @@ struct AstNode
 
     void SetStaticErrorReporters(const std::shared_ptr<CompileTimeErrorReporter>& errReporter, const std::shared_ptr<WarningReporter>& warningReporter);
 
-    virtual void ReportTypeError(const std::string message);
+    virtual void ReportTypeError(ErrorCode errorCode, const SupplementalErrorMsg& message = "");
 
 protected:
     virtual void SetPosition(const Position& position)

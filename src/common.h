@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <memory>
 #include "CustomExceptions.h"
+#include "ErrorCodes.h"
 
 template<typename T, typename... Args>
 std::unique_ptr<T> make_unique(Args&&... args)

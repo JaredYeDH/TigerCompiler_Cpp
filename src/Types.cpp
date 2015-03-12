@@ -283,8 +283,9 @@ class IsRecordTypeWithMatchingFieldsVisitor
     : public boost::static_visitor<bool>
 {
 public:
-    IsRecordTypeWithMatchingFieldsVisitor(const RecordTy& fields, std::string& errorMsg)
+    IsRecordTypeWithMatchingFieldsVisitor(const RecordTy& fields, ErrorCode& errorCode, std::string& errorMsg)
         : m_fields(fields)
+        , m_errorCode(errorCode)
         , m_errorMsg(errorMsg)
     {
     }
@@ -293,7 +294,7 @@ public:
     {
         if (record.type.size() != m_fields.size())
         {
-            m_errorMsg = "Record lacks enough fields";
+            m_errorCode = ErrorCode::Err26;
             return false;
         }
 
@@ -301,12 +302,12 @@ public:
         {
             if (!AreEqualTypes(record.type[i].second, m_fields[i].second))
             {
-                m_errorMsg = "Record type mismatch";
+                m_errorCode = ErrorCode::Err27;
                 return false;
             }
             if (record.type[i].first != m_fields[i].first)
             {
-                m_errorMsg = "Record position names mismatch";
+                m_errorCode = ErrorCode::Err28;
                 return false;
             }
             return true;
@@ -317,15 +318,17 @@ public:
     bool operator()(const T&) const
     {
         m_errorMsg = "Type is of non record type";
+        m_errorCode = ErrorCode::Err29;
         return false;
     }
 
 private:
     const RecordTy& m_fields;
+    ErrorCode& m_errorCode;
     std::string& m_errorMsg;
 };
 
-bool Types::IsRecordTypeWithMatchingFields(const Type& type, const RecordTy& fieldTypes, std::string& errorMsg)
+bool Types::IsRecordTypeWithMatchingFields(const Type& type, const RecordTy& fieldTypes, ErrorCode& errorCode, std::string& errorMsg)
 {
-    return boost::apply_visitor(IsRecordTypeWithMatchingFieldsVisitor(fieldTypes, errorMsg), type);
+    return boost::apply_visitor(IsRecordTypeWithMatchingFieldsVisitor(fieldTypes, errorCode, errorMsg), type);
 }

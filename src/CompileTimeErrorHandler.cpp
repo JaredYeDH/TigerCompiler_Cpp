@@ -10,7 +10,7 @@ void CompileTimeErrorReporter::ReportAllGivenErrors() const
 {
     for (const Error& err : m_errors)
     {
-        std::cerr << err.What() << " occured at " << err.Where() << "\n";
+        std::cerr << "Error: " << err.Report() << "\n";
     }
 }
 
