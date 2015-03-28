@@ -53,6 +53,8 @@ public:
         return m_errors.empty();
     }
 
+    bool ContainsErrorCode(const ErrorCode& err) const;
+    
 protected:
     std::vector<Error> m_errors;
 };

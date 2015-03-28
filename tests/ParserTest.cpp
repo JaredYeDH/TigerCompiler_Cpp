@@ -309,13 +309,17 @@ public:
     void SetUp() override { parser = nullptr; }
     void CreateFromString(const string& program);
     std::unique_ptr<Parser> parser;
+    std::shared_ptr<CompileTimeErrorReporter> errors;
+    std::shared_ptr<WarningReporter> warnings;
 };
 
 void ParserTest::CreateFromString(const string& program)
 {
     unique_ptr<istream> stream = make_unique<stringstream>(program);
     TokenStream tokenStream(move(stream));
-    parser = make_unique<Parser>(move(tokenStream), make_shared<CompileTimeErrorReporter>(), make_shared<WarningReporter>());
+    errors = make_shared<CompileTimeErrorReporter>();
+    warnings = make_shared<WarningReporter>();
+    parser = make_unique<Parser>(move(tokenStream), errors, warnings);
 }
 
 TEST_F(ParserTest, NilExp_noParens) 
@@ -365,7 +369,8 @@ TEST_F(ParserTest, BreakExp)
 TEST_F(ParserTest, UnMatchedParens_throws)
 {
     CreateFromString("( int ");
-    ASSERT_THROW(parser->Parse(), ParseException);
+    parser->Parse();
+    ASSERT_TRUE(errors->ContainsErrorCode(ErrorCode::Err34));
 }
 
 TEST_F(ParserTest, MatchedParens_Int)

@@ -11,9 +11,9 @@ class EndToEndTest : public ::testing::Test
 public:
     bool FileShouldFailToTypeCheck(const char* error, const std::string& filename)
     {
-        if (true /* short circut all of these for now, let's see dem errors*/ || !boost::algorithm::ends_with(filename, "32.tig")
+        if (true /* short circut all of these for now, let's see dem errors*/ || (!boost::algorithm::ends_with(filename, "32.tig")
             && !boost::algorithm::ends_with(filename, "33.tig")
-            && !boost::algorithm::ends_with(filename, "20.tig")
+            && !boost::algorithm::ends_with(filename, "20.tig"))
             )
         {
             std::cout << error << " thrown in " << filename << "\n";
