@@ -5,7 +5,7 @@ using namespace std;
 void VerifyAdd(const Symbol& sym, Type ty, std::shared_ptr<TypeEnvironment>& symTable)
 {
     bool shadowed;
-    symTable->Insert(sym, ty, shadowed);
+    symTable->Insert(sym, make_shared<EnvType>(ty), shadowed);
     if (shadowed)
     {
         throw CompilerErrorException("Base Value envirionment is shadowing an entry");

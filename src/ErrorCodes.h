@@ -17,9 +17,8 @@ enum class ErrorCode : uint64_t
     Err50, Err51, Err52, Err53, Err54,
     Err55, Err56, Err57, Err58, Err59,
     Err60, Err61, Err62, Err63, Err64,
-    Err65,
-
-    CountErrors
+    Err65, Err66, Err67, Err68, Err69,
+    Err70
 }; 
 
 namespace ErrorCodes

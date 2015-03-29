@@ -120,12 +120,22 @@ public:
     {
         return !AreEqualTypes(m_type, other.m_type);
     }
+
+    void AddTypeToNameType(const Type& typeToAdd)
+    {
+        if (!Types::IsNameType(m_type))
+        {
+            throw CompilerErrorException("Attempt to add type to non name type");
+        }
+        TypeFactory::AddTypeToName(m_type, typeToAdd);
+    }
+
 private:
     Type m_type;
 };
 
 class TypeEnvironment
-    : public SymbolTable<EnvType>
+    : public SymbolTable<std::shared_ptr<EnvType>>
 {
 public:
     static std::shared_ptr<TypeEnvironment> GenerateBaseTypeEnvironment();

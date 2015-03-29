@@ -1,0 +1,5 @@
+let
+    type list = {first: int, rest: list}
+in
+    ()
+end

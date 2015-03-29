@@ -33,7 +33,7 @@ public:
         }
 
         std::vector<Symbol>& stackFrame = m_scopeStack.top();
-        // no dups
+        
         if (std::find(begin(stackFrame), end(stackFrame), symbol) != end(stackFrame))
         {
             // Warn about overwriting symbols
@@ -43,9 +43,8 @@ public:
             }
             else
             {
-                return;
+                throw CompilerErrorException("Re adding symbol to symbol table with same type. This is not a shadowing case");
             }
-            return;
         }
 
         m_table[symbol].push(entry);

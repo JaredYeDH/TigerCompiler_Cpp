@@ -40,5 +40,5 @@ void WarningReporter::ReportAllWarningsAtOrBelowLevel(WarningLevel level) const
 
 bool WarningReporter::HasAnyErrors() const
 {
-    return m_warnings.empty();
+    return !m_warnings.empty();
 }

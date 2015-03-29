@@ -6,7 +6,7 @@ class StripLeadingNameVisitor
     : public boost::static_visitor<Type>
 {
 public:
-    Type operator()(NameTy& ty) const 
+    Type operator()(const NameTy& ty) const 
     {
         if (!ty.second)
         {
@@ -22,7 +22,7 @@ public:
     }
 };
 
-Type Types::StripLeadingNameTypes(Type& type)
+Type Types::StripLeadingNameTypes(const Type& type)
 {
     return boost::apply_visitor(StripLeadingNameVisitor(), type);
 }
@@ -331,4 +331,25 @@ private:
 bool Types::IsRecordTypeWithMatchingFields(const Type& type, const RecordTy& fieldTypes, ErrorCode& errorCode, std::string& errorMsg)
 {
     return boost::apply_visitor(IsRecordTypeWithMatchingFieldsVisitor(fieldTypes, errorCode, errorMsg), type);
+}
+
+class IsNameTypeVisitor
+    : public boost::static_visitor<bool>
+{
+public:
+    bool operator()(const NameTy&) const
+    {
+        return true;
+    }
+
+    template<typename T>
+    bool operator()(const T&) const
+    {
+        return false;
+    }
+};
+ 
+bool Types::IsNameType(const Type& type)
+{
+    return boost::apply_visitor(IsNameTypeVisitor(), type);
 }

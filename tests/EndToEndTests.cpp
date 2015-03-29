@@ -5,19 +5,88 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 namespace fs = ::boost::filesystem;
+using namespace std;
 
 class EndToEndTest : public ::testing::Test
 {
 public:
-    bool FileShouldFailToTypeCheck(const char* error, const std::string& filename)
+    std::map<uint32_t, vector<ErrorCode>> TestNumberToMiniumErrors
     {
-        if (true /* short circut all of these for now, let's see dem errors*/ || (!boost::algorithm::ends_with(filename, "32.tig")
-            && !boost::algorithm::ends_with(filename, "33.tig")
-            && !boost::algorithm::ends_with(filename, "20.tig"))
-            )
+        {9,  {ErrorCode::Err14}},
+        {10, {ErrorCode::Err66}},
+        {11, {ErrorCode::Err16, ErrorCode::Err67}},
+        {13, {ErrorCode::Err9}},
+        {14, {ErrorCode::Err9}},
+        {15, {ErrorCode::Err68}},
+//       {16, {??}}, // TODO
+        {17, {ErrorCode::Err69}},
+        {18, {ErrorCode::Err69}},
+        {19, {ErrorCode::Err0}},
+        {20, {ErrorCode::Err0}},
+        {21, {ErrorCode::Err70}}, // does this need another error?
+        {22, {ErrorCode::Err1}},
+        {23, {ErrorCode::Err27}},
+        {24, {ErrorCode::Err2}},
+        {25, {ErrorCode::Err1}},
+        {26, {ErrorCode::Err9}},
+        {28, {ErrorCode::Err12}},
+        {29, {ErrorCode::Err20}},
+        {31, {ErrorCode::Err22}},
+        {32, {ErrorCode::Err20}},
+        {33, {ErrorCode::Err0}},
+        {34, {ErrorCode::Err8}},
+        {35, {ErrorCode::Err7}},
+        {36, {ErrorCode::Err7}},
+//        {38, {??}}, // TODO
+//        {39, {??}}, // TODO
+        {40, {ErrorCode::Err70}},
+        {43, {ErrorCode::Err9}},
+//        {45, {??}}, // TODO
+//        {47, {??}}, // TODO
+//        {48, {??}}, // TODO
+//        {49, {??}} //TODO
+    };
+
+    uint32_t GetTestNumberFromName(const string& test)
+    {
+        auto firstDigit = test.find_first_of("0123456789");
+        auto lastDigit = test.find_last_of("0123456789");
+        stringstream number { test.substr(firstDigit, lastDigit) };
+        int testNumber;
+        number >> testNumber;
+        return testNumber;
+    }
+
+    bool TestHasExpectedErrors(const string& test, const CompileTimeErrorReporter* errors)
+    {
+        if (boost::algorithm::ends_with(test, "merge.tig") || boost::algorithm::ends_with(test, "queens.tig"))
         {
-            std::cout << error << " thrown in " << filename << "\n";
-            return false;
+            if (errors->HasAnyErrors())
+            {
+                return false;
+            }
+            return true;
+        }
+
+        auto testNumber = GetTestNumberFromName(test);
+        auto expectedErrors = TestNumberToMiniumErrors.find(testNumber);
+
+        if (expectedErrors == end(TestNumberToMiniumErrors))
+        {
+            if (errors->HasAnyErrors())
+            {
+                return false;
+            }
+            return true;
+        }
+        
+        // extra errors are ok for now
+        for (const auto& err : expectedErrors->second)
+        {
+            if (!errors->ContainsErrorCode(err))
+            {
+                return false;
+            }
         }
         return true;
     }
@@ -39,27 +108,19 @@ public:
 					auto prog = parser.Parse();
                     prog->TypeCheck();
 				}
-				catch (const ParseException& t)
-				{
-					if (!boost::algorithm::ends_with(p.filename().string(), "49.tig"))
-					{
-						std::cout << t.what() << " thrown in " << p.filename().string() << "\n";
-                        allPassed = false;
-					}
-				}
-                catch (const SemanticAnalysisException& t)
-				{
-                    allPassed = FileShouldFailToTypeCheck(t.what(), p.filename().string()) && allPassed;
-				}
 				catch (const std::exception& t)
 				{
 					std::cout << t.what() << " thrown in " << p.filename().string() << "\n";
                     allPassed = false;
 				}
-
-                std::cerr << "++++++++++++++ " << p.filename().string() << " +++++++++++++\n";
-                errorReporter->ReportAllGivenErrors();
-                warningReporter->ReportAllWarningsAtOrBelowLevel(WarningLevel::High);
+                
+                if (!TestHasExpectedErrors(p.filename().string(), errorReporter.get()))
+                {
+                    std::cerr << "++++++++++++++ Failure in " << p.filename().string() << " +++++++++++++\n";
+                    errorReporter->ReportAllGivenErrors();
+                    warningReporter->ReportAllWarningsAtOrBelowLevel(WarningLevel::High);
+                    allPassed = false;
+                }
 			}
 		}
 

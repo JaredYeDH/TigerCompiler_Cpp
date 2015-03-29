@@ -216,9 +216,9 @@ Type RecordExpression::TypeCheck()
     {
         ReportTypeError(ErrorCode::Err11);
         // error correct
-        expectTyWrapper = EnvType(TypeFactory::MakeIntType());
+        expectTyWrapper = std::make_shared<EnvType>(TypeFactory::MakeIntType());
     }
-    Type expectedType = expectTyWrapper->UseType();
+    Type expectedType = (*expectTyWrapper)->UseType();
 
     RecordTy fieldTypes;
     for (const auto& field : fields)
@@ -235,8 +235,8 @@ Type RecordExpression::TypeCheck()
         ReportTypeError(errorCode, errorMessage);
     }
 
-    // TODO: what type should this return?
-    return TypeFactory::MakeUnitType();
+    // TODO: Do we need to do ID matching here?
+    return TypeFactory::MakeRecordType(fieldTypes);
 }
 
 Type SeqExpression::TypeCheck()
@@ -297,6 +297,10 @@ Type IfExpression::TypeCheck()
     }
     else
     {
+        if (!AreEqualTypes(TypeFactory::MakeUnitType(), thenTy))
+        {
+            ReportTypeError(ErrorCode::Err68);
+        }
         return TypeFactory::MakeUnitType();
     }
 
@@ -313,7 +317,11 @@ Type WhileExpression::TypeCheck()
     {
         ReportTypeError(ErrorCode::Err15);
     }
-    body->TypeCheck();
+    auto bodyTy = body->TypeCheck();
+    if (!AreEqualTypes(TypeFactory::MakeUnitType(), bodyTy))
+    {
+        ReportTypeError(ErrorCode::Err66);
+    }
     return TypeFactory::MakeUnitType();
 }
 
@@ -326,7 +334,7 @@ Type ForExpression::TypeCheck()
     high->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
     Type lTy = low->TypeCheck();
     Type hTy = high->TypeCheck();
-    if (!AreEqualTypes(lTy, hTy) && !AreEqualTypes(lTy, TypeFactory::MakeIntType()))
+    if (!AreEqualTypes(lTy, hTy) || !AreEqualTypes(lTy, TypeFactory::MakeIntType()) || !AreEqualTypes(hTy, TypeFactory::MakeIntType()))
     {
         ReportTypeError(ErrorCode::Err16, "");
     }
@@ -406,13 +414,13 @@ Type ArrayExpression::TypeCheck()
         ReportTypeError(ErrorCode::Err19, "");
     }
 
-    if (!AreEqualTypes(tyTy->UseType(), initTy))
+    if (!AreEqualTypes((*tyTy)->UseType(), initTy))
     {
         ReportTypeError(ErrorCode::Err20, "");
     }
 
-    // TODO: what type is an array expression?
-    return TypeFactory::MakeNilType();
+    // TODO: Do we need to do anythin with id matching?
+    return TypeFactory::MakeArrayType(initTy);
 }
 
 // Will not add the funentry to the environment. This promises to leave the
@@ -436,18 +444,18 @@ std::shared_ptr<FunEntry> CheckFunctionDecl(const std::shared_ptr<CompileTimeErr
             Error err { ErrorCode::Err30, decl.position, field.name.UseName()};
             errorReporter->AddError(err);
             // error correcting
-            formalType = EnvType{TypeFactory::MakeIntType()};
+            formalType = std::make_shared<EnvType>(TypeFactory::MakeIntType());
         }
     
         bool shadowed;
-        valEnv->Insert(field.name, std::make_shared<VarEntry>(formalType->UseType()), shadowed);
+        valEnv->Insert(field.name, std::make_shared<VarEntry>((*formalType)->UseType()), shadowed);
         if (shadowed)
         {
             std::string err("Shadowing of " + field.name.UseName());
             warningReporter->AddWarning({field.position, err, WarningLevel::Low});
         }
 
-        formals.push_back(formalType->UseType());
+        formals.push_back((*formalType)->UseType());
     }
 
     decl.body->SetEnvironments(valEnv, tyEnv);
@@ -461,11 +469,16 @@ std::shared_ptr<FunEntry> CheckFunctionDecl(const std::shared_ptr<CompileTimeErr
             errorReporter->AddError(err);
  
         }
-        if (!AreEqualTypes(resultTy->UseType(), actualType))
+        if (!AreEqualTypes((*resultTy)->UseType(), actualType))
         {
             Error err { ErrorCode::Err32, decl.position, ""};
             errorReporter->AddError(err);
         }
+    }
+    else if (!AreEqualTypes(TypeFactory::MakeUnitType(), actualType))
+    { 
+        Error err { ErrorCode::Err70, decl.position, ""};
+        errorReporter->AddError(err);
     }
 
     valEnv->EndScope();
@@ -511,7 +524,7 @@ Type VarDeclaration::TypeCheck()
         {
             ReportTypeError(ErrorCode::Err21, "");
         }
-        else if (!AreEqualTypes(experTy, ty->UseType()))
+        else if (!AreEqualTypes(experTy, (*ty)->UseType()))
         {
             ReportTypeError(ErrorCode::Err22, "");
         }
@@ -537,18 +550,30 @@ Type TypeDeclaration::TypeCheck()
     assert(UseValueEnvironment());
     assert(UseTypeEnvironment());
     
+    // initial pass for headers. This handles recursive types
     for (const TyDec& tyDec : types)
     {
         tyDec.type->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
-        Type ty = tyDec.type->TypeCheck();
-
+        
         bool shadowed;
-        UseTypeEnvironment()->Insert(tyDec.name, ty, shadowed);
+        UseTypeEnvironment()->Insert(tyDec.name, std::make_shared<EnvType>(TypeFactory::MakeEmptyNameType(tyDec.name)), shadowed);
         if (shadowed)
         {
             std::string err("Shadowing of " + tyDec.name.UseName());
             UseWarningReporter()->AddWarning({tyDec.position, err, WarningLevel::Low});
         }
+    }
+    
+    // second pass to actually type check
+    for (const TyDec& tyDec : types)
+    {
+        Type ty = tyDec.type->TypeCheck();
+        auto envValue = UseTypeEnvironment()->LookUp(tyDec.name);
+        if (!envValue || !Types::IsNameType((*envValue)->UseType()))
+        {
+            throw CompilerErrorException("Expected type to exist in type environment. This breaks recursive types");
+        }
+        (*envValue)->AddTypeToNameType(ty);
     }
 
     // TODO: does this return something different?
@@ -576,9 +601,9 @@ Type RecordType::TypeCheck()
         {
             ReportTypeError(ErrorCode::Err24, "");
             // error correct
-            ty = TypeFactory::MakeIntType();
+            ty = std::make_shared<EnvType>(TypeFactory::MakeIntType());
         }
-        record.push_back({field.name, ty->UseType()});
+        record.push_back({field.name, (*ty)->UseType()});
     }
     return TypeFactory::MakeRecordType(record);
 }
@@ -593,6 +618,6 @@ Type ArrayType::TypeCheck()
     {
         ReportTypeError(ErrorCode::Err25, "");
     }
-    Type type = ty->UseType();
+    Type type = (*ty)->UseType();
     return TypeFactory::MakeArrayType(type);
 }

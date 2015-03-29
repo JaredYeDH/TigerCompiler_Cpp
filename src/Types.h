@@ -40,11 +40,12 @@ bool AreEqualTypes(const Type& t1, const Type& t2);
 
 namespace Types
 {
-Type StripLeadingNameTypes(Type& type);
+Type StripLeadingNameTypes(const Type& type);
 boost::optional<Type> GetFieldFromRecord(const Type& type, const Symbol& symbol);
 bool IsRecordTypeWithMatchingFields(const Type& type, const RecordTy& fieldTypes, ErrorCode& errorCode, std::string& errorMsg);
 bool IsArrayType(const Type& type);
 boost::optional<Type> GetTypeOfArray(const Type& type);
+bool IsNameType(const Type& type);
 }
 
 class TypeFactory

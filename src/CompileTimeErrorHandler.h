@@ -50,7 +50,7 @@ public:
 
     bool HasAnyErrors() const
     {
-        return m_errors.empty();
+        return !m_errors.empty();
     }
 
     bool ContainsErrorCode(const ErrorCode& err) const;
