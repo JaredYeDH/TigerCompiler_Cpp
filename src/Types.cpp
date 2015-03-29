@@ -165,7 +165,7 @@ public:
             {
                 return false;
             }
-            return AreEqualTypes(lhs, rhs);
+            return AreEqualTypes(*(lhs.second), (*rhs.second));
         }
         else if (rhs.second)
         {

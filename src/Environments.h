@@ -7,9 +7,9 @@
 struct EnvEntry
 {
     virtual ~EnvEntry(){};
-    virtual Type GetType() = 0;
-    virtual bool IsFunction() = 0;
-    virtual const std::vector<Type>& UseFormals() = 0;
+    virtual Type GetType() const = 0;
+    virtual bool IsFunction() const = 0;
+    virtual const std::vector<Type>& UseFormals() const = 0;
 };
 
 struct VarEntry
@@ -21,17 +21,17 @@ struct VarEntry
         : type(ty)
     {}
 
-    Type GetType() override
+    Type GetType() const override
     {
         return type;
     }
 
-    bool IsFunction()
+    bool IsFunction() const override
     {
         return false;
     }
 
-    const std::vector<Type>& UseFormals()
+    const std::vector<Type>& UseFormals() const override
     {
         throw CompilerErrorException("Can't UseFormals for non function");
     }
@@ -52,17 +52,17 @@ struct FunEntry
     std::vector<Type> formals;
     Type result;
 
-    Type GetType() override
+    Type GetType() const override
     {
         return result;
     }
 
-    bool IsFunction()
+    bool IsFunction() const override
     {
         return true;
     }
 
-    const std::vector<Type>& UseFormals()
+    const std::vector<Type>& UseFormals() const override
     {
         return formals;
     }

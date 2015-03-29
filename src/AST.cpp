@@ -419,43 +419,40 @@ Type ArrayExpression::TypeCheck()
         ReportTypeError(ErrorCode::Err20, "");
     }
 
-    // TODO: Do we need to do anythin with id matching?
+    // TODO: Do we need to do anything with id matching?
     return TypeFactory::MakeArrayType(initTy);
 }
 
 // Will not add the funentry to the environment. This promises to leave the
 // environments as they where when you passed them in when it's done.
-std::shared_ptr<FunEntry> CheckFunctionDecl(const std::shared_ptr<CompileTimeErrorReporter>& errorReporter, const std::shared_ptr<WarningReporter>& warningReporter, std::shared_ptr<ValueEnvironment>& valEnv, std::shared_ptr<TypeEnvironment>& tyEnv, const FunDec& decl)
+Type CheckFunctionDecl(
+        const EnvEntry& entry,
+        const std::shared_ptr<CompileTimeErrorReporter>& errorReporter,
+        const std::shared_ptr<WarningReporter>& warningReporter,
+        std::shared_ptr<ValueEnvironment>& valEnv,
+        std::shared_ptr<TypeEnvironment>& tyEnv,
+        const FunDec& decl)
 {
-    // vector<Field> fields
-    // optional<Symbol> resultTy
-    // unique_ptr<Expression> body
+    if (!entry.IsFunction())
+    {
+        throw CompilerErrorException("Checking function decl on non function type");
+    }
 
     valEnv->BeginScope();
     tyEnv->BeginScope();
 
-    std::vector<Type> formals;
-
-    for (const Field& field : decl.fields)
+    // bring all formals into scope
+    for (uint32_t i = 0; i < entry.UseFormals().size(); ++i)
     {
-        auto formalType = tyEnv->LookUp(field.type);
-        if (!formalType)
-        {
-            Error err { ErrorCode::Err30, decl.position, field.name.UseName()};
-            errorReporter->AddError(err);
-            // error correcting
-            formalType = std::make_shared<EnvType>(TypeFactory::MakeIntType());
-        }
-    
+        const auto& formal = entry.UseFormals()[i];
         bool shadowed;
-        valEnv->Insert(field.name, std::make_shared<VarEntry>((*formalType)->UseType()), shadowed);
+        auto field = decl.fields[i];
+        valEnv->Insert(field.name, std::make_shared<VarEntry>(formal), shadowed);
         if (shadowed)
         {
             std::string err("Shadowing of " + field.name.UseName());
             warningReporter->AddWarning({field.position, err, WarningLevel::Low});
         }
-
-        formals.push_back((*formalType)->UseType());
     }
 
     decl.body->SetEnvironments(valEnv, tyEnv);
@@ -463,7 +460,7 @@ std::shared_ptr<FunEntry> CheckFunctionDecl(const std::shared_ptr<CompileTimeErr
     if (decl.resultTy)
     {
         auto resultTy = tyEnv->LookUp(*decl.resultTy);
-        if (!resultTy)
+        if (!resultTy || !*resultTy)
         {
             Error err { ErrorCode::Err31, decl.position, ""};
             errorReporter->AddError(err);
@@ -484,7 +481,51 @@ std::shared_ptr<FunEntry> CheckFunctionDecl(const std::shared_ptr<CompileTimeErr
     valEnv->EndScope();
     tyEnv->EndScope();
     
-    return std::make_shared<FunEntry>(formals, actualType);
+    return actualType;
+}
+
+std::shared_ptr<FunEntry> GetFunctionDeclHeader(
+        const std::shared_ptr<CompileTimeErrorReporter>& errorReporter,
+        const std::shared_ptr<WarningReporter>& warningReporter,
+        std::shared_ptr<ValueEnvironment>& valEnv,
+        std::shared_ptr<TypeEnvironment>& tyEnv,
+        const FunDec& decl)
+{
+    Type ty;
+    if (decl.resultTy)
+    {
+        auto resTy = tyEnv->LookUp(*(decl.resultTy));
+        if (!resTy)
+        {
+            Error err {ErrorCode::Err31, decl.position, ""};
+            errorReporter->AddError(err);
+            // error correcting
+            ty = TypeFactory::MakeIntType();
+        }
+        ty = (*resTy)->UseType();
+    }
+    else
+    {
+        ty = TypeFactory::MakeUnitType();
+    }
+
+    std::vector<Type> formals;
+    for (const Field& field : decl.fields)
+    {
+        auto formalType = tyEnv->LookUp(field.type);
+        if (!formalType)
+        {
+            Error err { ErrorCode::Err30, decl.position, field.name.UseName()};
+            errorReporter->AddError(err);
+            // error correcting
+            formalType = std::make_shared<EnvType>(TypeFactory::MakeIntType());
+        }
+    
+        formals.push_back((*formalType)->UseType());
+    }
+
+    // Right now, we have to assume that the given type is valid.
+    return std::make_shared<FunEntry>(formals, ty);
 }
 
 Type FunctionDeclaration::TypeCheck()
@@ -492,10 +533,10 @@ Type FunctionDeclaration::TypeCheck()
     assert(UseValueEnvironment());
     assert(UseTypeEnvironment());
 
-    // TODO: Recursive decls
+    // inital pass to get headers of name type
     for (const auto& decl : decls)
     {
-        std::shared_ptr<FunEntry> fun = CheckFunctionDecl(UseErrorReporter(), UseWarningReporter(), UseValueEnvironment(), UseTypeEnvironment(), decl);
+        std::shared_ptr<FunEntry> fun = GetFunctionDeclHeader(UseErrorReporter(), UseWarningReporter(), UseValueEnvironment(), UseTypeEnvironment(), decl);
 
         bool shadowed;
         UseValueEnvironment()->Insert(decl.name, fun, shadowed);
@@ -504,7 +545,26 @@ Type FunctionDeclaration::TypeCheck()
             std::string err("Shadowing of " + decl.name.UseName());
             UseWarningReporter()->AddWarning({decl.position, err, WarningLevel::Low});
         }
+    }
 
+    // second pass for checking bodies
+    for (const auto& decl : decls)
+    {
+        // lookup in env
+        auto funEntry = UseValueEnvironment()->LookUp(decl.name);
+        if (!funEntry || !*funEntry)
+        {
+            throw CompilerErrorException("Possibly recursive function was not added to environment in header pass");
+        }
+        
+        // typecheck for real
+        auto realType = CheckFunctionDecl(*(funEntry->get()), UseErrorReporter(), UseWarningReporter(), UseValueEnvironment(), UseTypeEnvironment(), decl);
+        if (!AreEqualTypes(realType, (*funEntry)->GetType()))
+        {
+            Error err {ErrorCode::Err32, decl.position, ""};
+            UseErrorReporter()->AddError(err);
+            // no error correcting here, go with the listed type
+        }
     }
     return TypeFactory::MakeUnitType();
 }
