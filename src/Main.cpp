@@ -1,11 +1,14 @@
 #include "common.h"
 #include "PositionCountingStream.h"
+#include "Parser.h"
 #include <sstream>
+#include <iostream>
 
-int main()
+int main(const int argc, char** argv)
 {
-    std::unique_ptr<std::istream> inStream = make_unique<std::stringstream>("a program");
-    auto stream = PositionCountingStream(std::move(inStream));
-    stream.get();
-    stream.GetCurrentPosition();
+    std::shared_ptr<CompileTimeErrorReporter> errorReporter = std::make_shared<CompileTimeErrorReporter>();
+    std::shared_ptr<WarningReporter> warningReporter = std::make_shared<WarningReporter>();
+    Parser parser = Parser::CreateParserForFile(argv[1], errorReporter, warningReporter);
+    auto prog = parser.Parse();
+    std::cout << prog->DumpAST();
 }

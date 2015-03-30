@@ -27,6 +27,34 @@ enum class BinOp : unsigned int
    Ge 
 };
 
+inline const char* DumpOp(BinOp op)
+{
+    switch(op)
+    {
+    case (BinOp::Plus):
+        return "+";
+    case (BinOp::Minus):
+        return "-";
+    case (BinOp::Times):
+        return "*";
+    case (BinOp::Div):
+        return "/";
+    case (BinOp::Eq):
+        return "=";
+    case (BinOp::Neq):
+        return "<>";
+    case (BinOp::Lt):
+        return "<";
+    case (BinOp::Le):
+        return "<=";
+    case (BinOp::Gt):
+        return ">";
+    case (BinOp::Ge):
+        return ">=";
+    }
+    return "<BustedOp>";
+}
+
 struct Field
 {
     Symbol name;
@@ -41,6 +69,11 @@ struct Field
         , position(pos)
     {
     }
+
+    std::string DumpAST() const
+    {
+        return "<Field: {" + name.UseName() + "," + type.UseName() + "}>";
+    }
 };
 
 struct AstNode
@@ -49,6 +82,8 @@ struct AstNode
     {
         return m_position;
     }
+
+    virtual std::string DumpAST() const = 0;
 
     virtual Type TypeCheck() = 0;
     
@@ -142,6 +177,11 @@ public:
     {
     }
 
+    std::string DumpAST() const
+    {
+        return m_expression->DumpAST();
+    }
+
     const Expression& UseExpression()
     {
         return *m_expression;
@@ -166,6 +206,12 @@ struct SimpleVar
     {
         SetPosition(pos);
     }
+    
+    std::string DumpAST() const override
+    {
+        return "<SimpleVar: " + symbol.UseName() + ">";
+    }
+
     Type TypeCheck() override;
 };
 
@@ -181,6 +227,10 @@ struct FieldVar
         SetPosition(pos);
     }
     Type TypeCheck() override;
+    std::string DumpAST() const override
+    {
+        return "<FieldVar: " + symbol.UseName() + " : " + var->DumpAST() + ">";
+    }
 };
 
 struct SubscriptVar
@@ -195,6 +245,12 @@ struct SubscriptVar
         SetPosition(pos);
     }
     Type TypeCheck() override;
+   
+    std::string DumpAST() const override
+    {
+        return "<SubscriptVar: " + var->DumpAST() + "[" + expression->DumpAST() +"]>";
+    }
+
 };
 
 struct VarExpression
@@ -207,6 +263,11 @@ struct VarExpression
         SetPosition(pos);
     }
     Type TypeCheck() override;
+   
+    std::string DumpAST() const override
+    {
+        return "<VarExpression: " + var->DumpAST() + ">";
+    }
 };
 
 struct NilExpression
@@ -217,6 +278,11 @@ struct NilExpression
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        return "<NilExpression>";
+    }
 };
 
 struct IntExpression
@@ -229,6 +295,13 @@ struct IntExpression
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        std::stringstream val;
+        val << value;
+        return "<IntExpression: " + val.str() + ">";
+    }
 };
 
 struct StringExpression
@@ -241,6 +314,11 @@ struct StringExpression
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        return "<StringExpression: " + value + ">";
+    }
 };
 
 struct CallExpression
@@ -255,6 +333,18 @@ struct CallExpression
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        std::stringstream ret;
+        ret << "<CallExpression: " << function.UseName();
+        for (const auto& exp : args)
+        {
+            ret << exp->DumpAST();
+        }
+        ret << ">";
+        return ret.str();
+    }
 };
 
 struct OpExpression
@@ -271,6 +361,11 @@ struct OpExpression
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        return "<OpExpression: " + lhs->DumpAST() + DumpOp(op) + rhs->DumpAST() + ">";
+    }
 };
 
 struct FieldExp
@@ -284,6 +379,11 @@ struct FieldExp
         , expr(std::move(ex))
         , position(pos)
     {}
+
+    std::string DumpAST() const
+    {
+        return "<FieldExp : " + field.UseName() + " : " + expr->DumpAST() + ">";
+    }
 };
 
 struct RecordExpression
@@ -298,6 +398,18 @@ struct RecordExpression
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        std::stringstream ss;
+        ss << "<RecordExpression : " << type.UseName();
+        for (const auto& f : fields)
+        {
+            ss << f.DumpAST();
+        }
+        ss << ">";
+        return ss.str();
+    }
 };
 
 struct SeqExpression
@@ -310,6 +422,18 @@ struct SeqExpression
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        std::stringstream ss;
+        ss << "<SeqExpression : (";
+        for (const auto& exp : expressions)
+        {
+            ss << exp->DumpAST() << ",";
+        }
+        ss << ")>";
+        return ss.str();
+    }
 };
 
 struct AssignmentExpression
@@ -324,6 +448,11 @@ struct AssignmentExpression
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        return "<AssignmentExpression : " + var->DumpAST() + " := " + expression->DumpAST() + ">";
+    }
 };
 
 struct IfExpression
@@ -345,6 +474,18 @@ struct IfExpression
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        std::stringstream ss;
+        ss << "<IfExpression : if "  << test->DumpAST() << " then " << thenBranch->DumpAST();
+        if (elseBranch)
+        {
+            ss << " then " << elseBranch->DumpAST();
+        }
+        ss << ">";
+        return ss.str();
+    }
 };
 
 struct WhileExpression
@@ -360,6 +501,11 @@ struct WhileExpression
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        return "<WhileExpression : test: " + test->DumpAST() + " body : " + body->DumpAST() + ">";
+    }
 };
 
 struct ForExpression
@@ -381,6 +527,11 @@ struct ForExpression
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        return "<ForExpression : low: " + low->DumpAST() + " high: " + high->DumpAST() + " body : " + body->DumpAST() + ">";
+    }
 };
 
 struct BreakExpression
@@ -391,6 +542,11 @@ struct BreakExpression
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        return "<BreakExpression>";
+    }
 };
 
 struct LetExpression
@@ -406,6 +562,18 @@ struct LetExpression
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        std::stringstream ss;
+        ss << "<LetExpression : decls: ";
+        for (const auto& d : decls)
+        {
+            ss << d->DumpAST();
+        }
+        ss << " body: " << body->DumpAST();
+        return ss.str();
+    }
 };
 
 struct ArrayExpression
@@ -423,6 +591,11 @@ struct ArrayExpression
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        return "<ArrayExpression: type: " + type.UseName() + " size: " + size->DumpAST() + " init: " + init->DumpAST() + ">";
+    }
 };
 
 struct FunDec
@@ -441,6 +614,23 @@ struct FunDec
         , position(pos)
     {
     }
+
+    std::string DumpAST() const
+    {
+        std::stringstream ss;
+        ss << "<FunDec name: " << name.UseName() << " fields: ";
+        for (const auto& f : fields)
+        {
+            ss << f.DumpAST();
+        }
+        ss << " result : ";
+        if (resultTy)
+        {
+            ss << resultTy->UseName();
+        }
+        ss << " body : " << body->DumpAST() << ">";
+        return ss.str();
+    }
 };
 
 struct FunctionDeclaration
@@ -454,6 +644,18 @@ struct FunctionDeclaration
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        std::stringstream ss;
+        ss << "<FunctionDeclaration: ";
+        for (const auto& d: decls)
+        {
+            ss << d.DumpAST();
+        }
+        ss << ">";
+        return ss.str();
+    }
 };
 
 struct VarDeclaration
@@ -474,6 +676,18 @@ struct VarDeclaration
     }
 
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        std::stringstream ss;
+        ss << "<VarDeclaration: name: " << name.UseName();
+        if (type)
+        {
+            ss << " type: " << type->UseName();
+        }
+        ss << " init " << init->DumpAST() << ">";
+        return ss.str();
+    }
 };
 
 struct TyDec
@@ -486,6 +700,11 @@ struct TyDec
         , type(std::move(ty))
         , position(pos)
     {}
+
+    std::string DumpAST() const
+    {
+        return "<TyDec : name: " + name.UseName() + " type: " + type->DumpAST() + ">";
+    }
 };
 
 struct TypeDeclaration
@@ -500,6 +719,18 @@ struct TypeDeclaration
     }
 
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        std::stringstream ss;
+        ss << "<TypeDeclaration ";
+        for (const auto& t : types)
+        {
+            ss << t.DumpAST();
+        }
+        ss << ">";
+        return ss.str();
+    }
 };
 
 struct NameType
@@ -513,6 +744,11 @@ struct NameType
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        return "<NameType: " + name.UseName() + ">";
+    }
 };
 
 struct RecordType
@@ -526,6 +762,18 @@ struct RecordType
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        std::stringstream ss;
+        ss << "<RecordType ";
+        for (const auto& f : fields)
+        {
+            ss << f.DumpAST();
+        }
+        ss << ">";
+        return ss.str();
+    }
 };
 
 struct ArrayType
@@ -539,6 +787,11 @@ struct ArrayType
         SetPosition(pos);
     }
     Type TypeCheck() override;
+
+    std::string DumpAST() const override
+    {
+        return "<ArrayType : name: " +  name.UseName() + ">";
+    }
 };
 
 }
