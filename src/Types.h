@@ -8,6 +8,8 @@
 
 typedef uint64_t UniqueId;
 
+class TypeEnvironment;
+
 template <typename TypeName>
 struct UniqueIdTagged
 {
@@ -46,6 +48,9 @@ bool IsRecordTypeWithMatchingFields(const Type& type, const RecordTy& fieldTypes
 bool IsArrayType(const Type& type);
 boost::optional<Type> GetTypeOfArray(const Type& type);
 bool IsNameType(const Type& type);
+bool FillNameTypes(Type& type, const std::shared_ptr<TypeEnvironment>& env, ErrorCode& errorCode, std::string& errorMsg);
+Symbol GetSymbolFromNameType(const Type& type);
+bool IsStrictlyNil(const Type& type);
 }
 
 class TypeFactory

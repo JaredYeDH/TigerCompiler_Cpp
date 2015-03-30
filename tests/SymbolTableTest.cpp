@@ -39,7 +39,7 @@ TEST_F(SymbolTableTest, SymbolTableErrorWhenOverwrittingExistingValue)
     // overwrites original mapping
     table->Insert(SymbolFactory::GenerateSymbol("a"), 5, shadowed);
     ASSERT_TRUE(shadowed);
-    ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 4);
+    ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 5);
 }
 
 TEST_F(SymbolTableTest, SymbolTableRemovedFromTableWhenOutOfScope)
@@ -60,6 +60,7 @@ TEST_F(SymbolTableTest, SymbolTableShadowedWhenNewScope)
         table->BeginScope();
         table->Insert(SymbolFactory::GenerateSymbol("a"), 5, shadowed);
         ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 5);
+        ASSERT_FALSE(shadowed);
         table->EndScope();
     }
 }
@@ -85,5 +86,3 @@ TEST_F(SymbolTableTest, SymbolTableCanGetValueFromOuterScopeIfNotShadowed)
     table->Insert(SymbolFactory::GenerateSymbol("b"), 5, shadowed);
     ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 4);
 }
-
-

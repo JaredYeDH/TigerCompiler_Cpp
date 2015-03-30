@@ -32,25 +32,25 @@ inline const char* DumpOp(BinOp op)
     switch(op)
     {
     case (BinOp::Plus):
-        return "+";
+        return " + ";
     case (BinOp::Minus):
-        return "-";
+        return " - ";
     case (BinOp::Times):
-        return "*";
+        return " * ";
     case (BinOp::Div):
-        return "/";
+        return " / ";
     case (BinOp::Eq):
-        return "=";
+        return " = ";
     case (BinOp::Neq):
-        return "<>";
+        return " <> ";
     case (BinOp::Lt):
-        return "<";
+        return " < ";
     case (BinOp::Le):
-        return "<=";
+        return " <= ";
     case (BinOp::Gt):
-        return ">";
+        return " > ";
     case (BinOp::Ge):
-        return ">=";
+        return " >= ";
     }
     return "<BustedOp>";
 }
@@ -72,7 +72,7 @@ struct Field
 
     std::string DumpAST() const
     {
-        return "<Field: {" + name.UseName() + "," + type.UseName() + "}>";
+        return "{Field: {" + name.UseName() + "," + type.UseName() + "}}";
     }
 };
 
@@ -209,7 +209,7 @@ struct SimpleVar
     
     std::string DumpAST() const override
     {
-        return "<SimpleVar: " + symbol.UseName() + ">";
+        return "{SimpleVar: " + symbol.UseName() + "}";
     }
 
     Type TypeCheck() override;
@@ -229,7 +229,7 @@ struct FieldVar
     Type TypeCheck() override;
     std::string DumpAST() const override
     {
-        return "<FieldVar: " + symbol.UseName() + " : " + var->DumpAST() + ">";
+        return "{FieldVar: " + symbol.UseName() + " : " + var->DumpAST() + "}";
     }
 };
 
@@ -248,7 +248,7 @@ struct SubscriptVar
    
     std::string DumpAST() const override
     {
-        return "<SubscriptVar: " + var->DumpAST() + "[" + expression->DumpAST() +"]>";
+        return "{SubscriptVar: " + var->DumpAST() + "[" + expression->DumpAST() +"]}";
     }
 
 };
@@ -266,7 +266,7 @@ struct VarExpression
    
     std::string DumpAST() const override
     {
-        return "<VarExpression: " + var->DumpAST() + ">";
+        return "{VarExpression: " + var->DumpAST() + "}";
     }
 };
 
@@ -281,7 +281,7 @@ struct NilExpression
 
     std::string DumpAST() const override
     {
-        return "<NilExpression>";
+        return "{NilExpression}";
     }
 };
 
@@ -300,7 +300,7 @@ struct IntExpression
     {
         std::stringstream val;
         val << value;
-        return "<IntExpression: " + val.str() + ">";
+        return "{IntExpression: " + val.str() + "}";
     }
 };
 
@@ -317,7 +317,7 @@ struct StringExpression
 
     std::string DumpAST() const override
     {
-        return "<StringExpression: " + value + ">";
+        return "{StringExpression: " + value + "}";
     }
 };
 
@@ -337,12 +337,12 @@ struct CallExpression
     std::string DumpAST() const override
     {
         std::stringstream ret;
-        ret << "<CallExpression: " << function.UseName();
+        ret << "{CallExpression: " << function.UseName();
         for (const auto& exp : args)
         {
             ret << exp->DumpAST();
         }
-        ret << ">";
+        ret << "}";
         return ret.str();
     }
 };
@@ -364,7 +364,7 @@ struct OpExpression
 
     std::string DumpAST() const override
     {
-        return "<OpExpression: " + lhs->DumpAST() + DumpOp(op) + rhs->DumpAST() + ">";
+        return "{OpExpression: " + lhs->DumpAST() + DumpOp(op) + rhs->DumpAST() + "}";
     }
 };
 
@@ -382,7 +382,7 @@ struct FieldExp
 
     std::string DumpAST() const
     {
-        return "<FieldExp : " + field.UseName() + " : " + expr->DumpAST() + ">";
+        return "{FieldExp : " + field.UseName() + " : " + expr->DumpAST() + "}";
     }
 };
 
@@ -402,12 +402,12 @@ struct RecordExpression
     std::string DumpAST() const override
     {
         std::stringstream ss;
-        ss << "<RecordExpression : " << type.UseName();
+        ss << "{RecordExpression : " << type.UseName();
         for (const auto& f : fields)
         {
             ss << f.DumpAST();
         }
-        ss << ">";
+        ss << "}";
         return ss.str();
     }
 };
@@ -426,12 +426,12 @@ struct SeqExpression
     std::string DumpAST() const override
     {
         std::stringstream ss;
-        ss << "<SeqExpression : (";
+        ss << "{SeqExpression : (";
         for (const auto& exp : expressions)
         {
             ss << exp->DumpAST() << ",";
         }
-        ss << ")>";
+        ss << ")}";
         return ss.str();
     }
 };
@@ -451,7 +451,7 @@ struct AssignmentExpression
 
     std::string DumpAST() const override
     {
-        return "<AssignmentExpression : " + var->DumpAST() + " := " + expression->DumpAST() + ">";
+        return "{AssignmentExpression : " + var->DumpAST() + " := " + expression->DumpAST() + "}";
     }
 };
 
@@ -478,12 +478,12 @@ struct IfExpression
     std::string DumpAST() const override
     {
         std::stringstream ss;
-        ss << "<IfExpression : if "  << test->DumpAST() << " then " << thenBranch->DumpAST();
+        ss << "{IfExpression : if "  << test->DumpAST() << " then " << thenBranch->DumpAST();
         if (elseBranch)
         {
-            ss << " then " << elseBranch->DumpAST();
+            ss << " else " << elseBranch->DumpAST();
         }
-        ss << ">";
+        ss << "}";
         return ss.str();
     }
 };
@@ -504,7 +504,7 @@ struct WhileExpression
 
     std::string DumpAST() const override
     {
-        return "<WhileExpression : test: " + test->DumpAST() + " body : " + body->DumpAST() + ">";
+        return "{WhileExpression : test: " + test->DumpAST() + " body : " + body->DumpAST() + "}";
     }
 };
 
@@ -530,7 +530,7 @@ struct ForExpression
 
     std::string DumpAST() const override
     {
-        return "<ForExpression : low: " + low->DumpAST() + " high: " + high->DumpAST() + " body : " + body->DumpAST() + ">";
+        return "{ForExpression : low: " + low->DumpAST() + " high: " + high->DumpAST() + " body : " + body->DumpAST() + "}";
     }
 };
 
@@ -545,7 +545,7 @@ struct BreakExpression
 
     std::string DumpAST() const override
     {
-        return "<BreakExpression>";
+        return "{BreakExpression}";
     }
 };
 
@@ -566,12 +566,12 @@ struct LetExpression
     std::string DumpAST() const override
     {
         std::stringstream ss;
-        ss << "<LetExpression : decls: ";
+        ss << "{LetExpression : decls: ";
         for (const auto& d : decls)
         {
             ss << d->DumpAST();
         }
-        ss << " body: " << body->DumpAST();
+        ss << " body: " << body->DumpAST() << "}";
         return ss.str();
     }
 };
@@ -594,7 +594,7 @@ struct ArrayExpression
 
     std::string DumpAST() const override
     {
-        return "<ArrayExpression: type: " + type.UseName() + " size: " + size->DumpAST() + " init: " + init->DumpAST() + ">";
+        return "{ArrayExpression: type: " + type.UseName() + " size: " + size->DumpAST() + " init: " + init->DumpAST() + "}";
     }
 };
 
@@ -618,7 +618,7 @@ struct FunDec
     std::string DumpAST() const
     {
         std::stringstream ss;
-        ss << "<FunDec name: " << name.UseName() << " fields: ";
+        ss << "{FunDec name: " << name.UseName() << " fields: ";
         for (const auto& f : fields)
         {
             ss << f.DumpAST();
@@ -628,7 +628,7 @@ struct FunDec
         {
             ss << resultTy->UseName();
         }
-        ss << " body : " << body->DumpAST() << ">";
+        ss << " body : " << body->DumpAST() << "}";
         return ss.str();
     }
 };
@@ -648,12 +648,12 @@ struct FunctionDeclaration
     std::string DumpAST() const override
     {
         std::stringstream ss;
-        ss << "<FunctionDeclaration: ";
+        ss << "{FunctionDeclaration: ";
         for (const auto& d: decls)
         {
             ss << d.DumpAST();
         }
-        ss << ">";
+        ss << "}";
         return ss.str();
     }
 };
@@ -680,12 +680,12 @@ struct VarDeclaration
     std::string DumpAST() const override
     {
         std::stringstream ss;
-        ss << "<VarDeclaration: name: " << name.UseName();
+        ss << "{VarDeclaration: name: " << name.UseName();
         if (type)
         {
             ss << " type: " << type->UseName();
         }
-        ss << " init " << init->DumpAST() << ">";
+        ss << " init " << init->DumpAST() << "}";
         return ss.str();
     }
 };
@@ -703,7 +703,7 @@ struct TyDec
 
     std::string DumpAST() const
     {
-        return "<TyDec : name: " + name.UseName() + " type: " + type->DumpAST() + ">";
+        return "{TyDec : name: " + name.UseName() + " type: " + type->DumpAST() + "}";
     }
 };
 
@@ -723,12 +723,12 @@ struct TypeDeclaration
     std::string DumpAST() const override
     {
         std::stringstream ss;
-        ss << "<TypeDeclaration ";
+        ss << "{TypeDeclaration ";
         for (const auto& t : types)
         {
             ss << t.DumpAST();
         }
-        ss << ">";
+        ss << "}";
         return ss.str();
     }
 };
@@ -747,7 +747,7 @@ struct NameType
 
     std::string DumpAST() const override
     {
-        return "<NameType: " + name.UseName() + ">";
+        return "{NameType: " + name.UseName() + "}";
     }
 };
 
@@ -766,12 +766,12 @@ struct RecordType
     std::string DumpAST() const override
     {
         std::stringstream ss;
-        ss << "<RecordType ";
+        ss << "{RecordType ";
         for (const auto& f : fields)
         {
             ss << f.DumpAST();
         }
-        ss << ">";
+        ss << "}";
         return ss.str();
     }
 };
@@ -790,7 +790,7 @@ struct ArrayType
 
     std::string DumpAST() const override
     {
-        return "<ArrayType : name: " +  name.UseName() + ">";
+        return "{ArrayType : name: " +  name.UseName() + "}";
     }
 };
 

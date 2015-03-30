@@ -18,33 +18,33 @@ public:
         {13, {ErrorCode::Err9}},
         {14, {ErrorCode::Err9}},
         {15, {ErrorCode::Err68}},
-//       {16, {??}}, // TODO
-        {17, {ErrorCode::Err69}},
-        {18, {ErrorCode::Err69}},
+        {16, {ErrorCode::Err73}},
+        {17, {ErrorCode::Err24}}, // TODO should we warn about interuption?
+        {18, {ErrorCode::Err5}}, // TODO should we warn about interuption?
         {19, {ErrorCode::Err0}},
         {20, {ErrorCode::Err0}},
         {21, {ErrorCode::Err70}}, // does this need another error?
         {22, {ErrorCode::Err1}},
-        {23, {ErrorCode::Err27}},
+        {23, {ErrorCode::Err12}},
         {24, {ErrorCode::Err2}},
         {25, {ErrorCode::Err1}},
         {26, {ErrorCode::Err9}},
-        {28, {ErrorCode::Err12}},
-        {29, {ErrorCode::Err20}},
+        {28, {ErrorCode::Err22}},
+        {29, {ErrorCode::Err22}},
         {31, {ErrorCode::Err22}},
         {32, {ErrorCode::Err20}},
-        {33, {ErrorCode::Err0}},
+        {33, {ErrorCode::Err11}},
         {34, {ErrorCode::Err8}},
         {35, {ErrorCode::Err7}},
         {36, {ErrorCode::Err7}},
-//        {38, {??}}, // TODO
-//        {39, {??}}, // TODO
+        {38, {ErrorCode::Err72}},
+        {39, {ErrorCode::Err72}},
         {40, {ErrorCode::Err70}},
         {43, {ErrorCode::Err9}},
-//        {45, {??}}, // TODO
-//        {47, {??}}, // TODO
-//        {48, {??}}, // TODO
-//        {49, {??}} //TODO
+        {45, {ErrorCode::Err23}},
+        {47, {ErrorCode::Err72}},
+        {48, {ErrorCode::Err72}},
+        {49, {ErrorCode::Err41}} // TODO a better error for this one
     };
 
     uint32_t GetTestNumberFromName(const string& test)
@@ -78,6 +78,10 @@ public:
                 return false;
             }
             return true;
+        }
+        else if (!errors->HasAnyErrors())
+        {
+            return false;
         }
         
         // extra errors are ok for now

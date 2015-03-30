@@ -198,10 +198,15 @@ Type OpExpression::TypeCheck()
         ReportTypeError(ErrorCode::Err9);
     }
 
-    if (!AreEqualTypes(leftType, TypeFactory::MakeIntType())
+    if (op != BinOp::Eq && op != BinOp::Neq 
+        && !AreEqualTypes(leftType, TypeFactory::MakeIntType())
         && !AreEqualTypes(leftType, TypeFactory::MakeStringType()))
     {
         ReportTypeError(ErrorCode::Err10);
+    }
+    if (op == BinOp::Eq || op == BinOp::Neq)
+    {
+        return TypeFactory::MakeIntType();
     }
     return leftType;
 }
@@ -220,6 +225,13 @@ Type RecordExpression::TypeCheck()
     }
     Type expectedType = (*expectTyWrapper)->UseType();
 
+    ErrorCode errorCode;
+    std::string errorMessage;
+    if (!Types::FillNameTypes(expectedType, UseTypeEnvironment(), errorCode, errorMessage))
+    {
+        ReportTypeError(errorCode, errorMessage);
+    }
+
     RecordTy fieldTypes;
     for (const auto& field : fields)
     {
@@ -228,15 +240,12 @@ Type RecordExpression::TypeCheck()
         fieldTypes.push_back({field.field, ty});
     }
 
-    ErrorCode errorCode;
-    std::string errorMessage;
     if (!Types::IsRecordTypeWithMatchingFields(expectedType, fieldTypes, errorCode, errorMessage))
     {
         ReportTypeError(errorCode, errorMessage);
     }
 
-    // TODO: Do we need to do ID matching here?
-    return TypeFactory::MakeRecordType(fieldTypes);
+    return expectedType;
 }
 
 Type SeqExpression::TypeCheck()
@@ -414,13 +423,18 @@ Type ArrayExpression::TypeCheck()
         ReportTypeError(ErrorCode::Err19, "");
     }
 
-    if (!AreEqualTypes((*tyTy)->UseType(), initTy))
+    if (!Types::IsArrayType((*tyTy)->UseType()))
+    {
+        ReportTypeError(ErrorCode::Err71, "");
+    }
+
+    auto typeOfArray = Types::GetTypeOfArray((*tyTy)->UseType());
+    if (!typeOfArray || !AreEqualTypes(*typeOfArray, initTy))
     {
         ReportTypeError(ErrorCode::Err20, "");
     }
 
-    // TODO: Do we need to do anything with id matching?
-    return TypeFactory::MakeArrayType(initTy);
+    return (*tyTy)->UseType();
 }
 
 // Will not add the funentry to the environment. This promises to leave the
@@ -543,7 +557,7 @@ Type FunctionDeclaration::TypeCheck()
         if (shadowed)
         {
             std::string err("Shadowing of " + decl.name.UseName());
-            UseWarningReporter()->AddWarning({decl.position, err, WarningLevel::Low});
+            ReportTypeError(ErrorCode::Err72, err);
         }
     }
 
@@ -586,10 +600,10 @@ Type VarDeclaration::TypeCheck()
         }
         else if (!AreEqualTypes(experTy, (*ty)->UseType()))
         {
-            ReportTypeError(ErrorCode::Err22, "");
+            ReportTypeError(ErrorCode::Err22, name.UseName());
         }
     }
-    else if (AreEqualTypes(experTy, TypeFactory::MakeNilType()))
+    else if (Types::IsStrictlyNil(experTy))
     {
         ReportTypeError(ErrorCode::Err23, "");
     }
@@ -620,7 +634,7 @@ Type TypeDeclaration::TypeCheck()
         if (shadowed)
         {
             std::string err("Shadowing of " + tyDec.name.UseName());
-            UseWarningReporter()->AddWarning({tyDec.position, err, WarningLevel::Low});
+            ReportTypeError(ErrorCode::Err72, err);
         }
     }
     
@@ -629,11 +643,11 @@ Type TypeDeclaration::TypeCheck()
     {
         Type ty = tyDec.type->TypeCheck();
         auto envValue = UseTypeEnvironment()->LookUp(tyDec.name);
-        if (!envValue || !Types::IsNameType((*envValue)->UseType()))
+        if (!envValue)
         {
             throw CompilerErrorException("Expected type to exist in type environment. This breaks recursive types");
         }
-        (*envValue)->AddTypeToNameType(ty);
+        (*envValue)->ReplaceNameTypeWithType(ty);
     }
 
     // TODO: does this return something different?
@@ -644,8 +658,13 @@ Type NameType::TypeCheck()
 {
     assert(UseValueEnvironment());
     assert(UseTypeEnvironment());
- 
-    return TypeFactory::MakeEmptyNameType(name);
+
+    auto ty = UseTypeEnvironment()->LookUp(name);
+    if (!ty)
+    {
+        ReportTypeError(ErrorCode::Err0, name.UseName());
+    }
+    return (*ty)->UseType();
 }
 
 Type RecordType::TypeCheck()

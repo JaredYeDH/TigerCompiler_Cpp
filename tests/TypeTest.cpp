@@ -167,3 +167,12 @@ TEST_F(TypeTest, StripLeadingNameTypes_WhenNoType_Throws)
             CompilerErrorException 
             );
 }
+
+TEST_F(TypeTest, IsRecordTypeWithMatchingFields_NoFields_Ok)
+{
+    RecordTy fieldTypes;
+    Type t = TypeFactory::MakeRecordType(fieldTypes);
+    ErrorCode code;
+    std::string msg;
+    ASSERT_TRUE(Types::IsRecordTypeWithMatchingFields(t, fieldTypes, code, msg));
+}

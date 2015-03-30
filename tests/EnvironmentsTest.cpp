@@ -96,7 +96,7 @@ TEST_F(EnvTest, TypeEnvironment_AllowsModificationOfNameTypes)
    
     {
         auto ty = tyEnv->LookUp(name);
-        (*ty)->AddTypeToNameType(TypeFactory::MakeIntType());
+        (*ty)->ReplaceNameTypeWithType(TypeFactory::MakeIntType());
     }
 
     auto ty = tyEnv->LookUp(name);
@@ -104,21 +104,3 @@ TEST_F(EnvTest, TypeEnvironment_AllowsModificationOfNameTypes)
     ASSERT_TRUE(AreEqualTypes(TypeFactory::MakeIntType(), actualTy));
 }
 
-/*
-TEST_F(EnvTest, ValueEnvironment_AllowsModificationOfNameTypes)
-{
-    auto valEnv = ValueEnvironment::GenerateBaseValueEnvironment();
-    auto name = SymbolFactory::GenerateSymbol("foo");
-    bool shadowed;
-    valEnv->Insert(name, std::make_shared<VarEntry>(TypeFactory::MakeEmptyNameType(name)), shadowed);
-   
-    {
-        auto ty = valEnv->LookUp(name);
-        TypeFactory::AddTypeToName((*ty)->GetType(), TypeFactory::MakeIntType());
-    }
-
-    auto ty = valEnv->LookUp(name);
-    auto actualTy = Types::StripLeadingNameTypes(ty->UseType());
-    ASSERT_TRUE(AreEqualTypes(TypeFactory::MakeIntType(), actualTy));
-}
-*/

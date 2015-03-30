@@ -75,7 +75,10 @@ const char* ErrorCodes::GetAssociatedMessage(ErrorCode error)
         {ErrorCode::Err67, "Err67 - Attempt to assign to variable in for loop"},
         {ErrorCode::Err68, "Err68 - if-then returns non-unit"},
         {ErrorCode::Err69, "Err69 - recursive definitions interupted."},
-        {ErrorCode::Err70, "Err70 - Procedure (function with no type annotation for return type) may not return value"}
+        {ErrorCode::Err70, "Err70 - Procedure (function with no type annotation for return type) may not return value"},
+        {ErrorCode::Err71, "Err71 - Attempt to init array with non array type"},
+        {ErrorCode::Err72, "Err72 - It is illegal to shadow a value previously defined in the same block of mutally recursive types"},
+        {ErrorCode::Err73, "Err73 - mutually recursive types with cycles must pass through records or arrays"}
     };
 
     auto err = errors.find(error);

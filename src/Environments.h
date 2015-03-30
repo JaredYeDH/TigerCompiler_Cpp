@@ -121,13 +121,14 @@ public:
         return !AreEqualTypes(m_type, other.m_type);
     }
 
-    void AddTypeToNameType(const Type& typeToAdd)
+    void ReplaceNameTypeWithType(const Type& typeToAdd)
     {
         if (!Types::IsNameType(m_type))
         {
-            throw CompilerErrorException("Attempt to add type to non name type");
+            // this is may get hit if there was an invalid shadow
+            return;
         }
-        TypeFactory::AddTypeToName(m_type, typeToAdd);
+        m_type = typeToAdd;
     }
 
 private:

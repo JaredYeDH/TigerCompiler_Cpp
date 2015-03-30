@@ -1,4 +1,5 @@
 #include "Types.h"
+#include "Environments.h"
 
 UniqueId TypeFactory::m_next_id{0};
 
@@ -10,7 +11,8 @@ public:
     {
         if (!ty.second)
         {
-            throw CompilerErrorException("Internal Compiler error: Attempt to strip name off a type in StripLeadingNameVisitor when no underlying type exists");
+            std::string msg = "Internal Compiler error: Attempt to strip name off a type in StripLeadingNameVisitor when no underlying type exists. Name was: " + ty.first.UseName();
+            throw CompilerErrorException(msg.c_str());
         }
         return Types::StripLeadingNameTypes(*ty.second);
     }
@@ -112,10 +114,14 @@ class AreEqualTypesVisitor
     : public boost::static_visitor<bool>
 {
 public:
-    template<typename T, typename U>
-    bool operator()(const T&, const U&) const
+    bool operator()(const UniqueIdTagged<RecordTy>& lhs, const NilTy& rhs) const
     {
-        return false;
+        return true;
+    }
+
+    bool operator()(const NilTy& rhs, const UniqueIdTagged<RecordTy>& lhs) const
+    {
+        return true;
     }
 
     bool operator()(const UniqueIdTagged<RecordTy>& lhs, const UniqueIdTagged<RecordTy>& rhs) const
@@ -123,24 +129,6 @@ public:
         if (lhs.id != rhs.id)
         {
             return false;
-        }
-        // Strictly speaking, the id check should be all we need. But let's do
-        // the whole check here for completeness, at least until we have a good
-        // reason not too.
-        if (lhs.type.size() != rhs.type.size())
-        {
-            return false;
-        }
-        for (auto i = 0u; i < lhs.type.size(); ++i)
-        {
-            if (lhs.type[i].first != rhs.type[i].first)
-            {
-                return false;
-            }
-            if (!AreEqualTypes(lhs.type[i].second, rhs.type[i].second))
-            {
-                return false;
-            }
         }
         return true;
     }
@@ -173,6 +161,12 @@ public:
             return false;
         }
         return true;
+    }
+
+    template<typename T, typename U>
+    bool operator()(const T&, const U&) const
+    {
+        return false;
     }
 
    template<typename T>
@@ -290,7 +284,7 @@ public:
     {
     }
 
-    bool operator()(const UniqueIdTagged<RecordTy>& record)
+    bool operator()(const UniqueIdTagged<RecordTy>& record) const
     {
         if (record.type.size() != m_fields.size())
         {
@@ -300,9 +294,18 @@ public:
 
         for (unsigned int i = 0; i < record.type.size(); i++)
         {
-            if (!AreEqualTypes(record.type[i].second, m_fields[i].second))
+            auto recTy = Types::StripLeadingNameTypes(record.type[i].second);
+            auto fieldTy = m_fields[i].second;
+            if (Types::IsNameType(fieldTy))
+            {
+                throw CompilerErrorException("actual types should not be name types");
+            }
+
+            if (!AreEqualTypes(recTy, fieldTy))
             {
                 m_errorCode = ErrorCode::Err27;
+                std::string msg  = "Expected: " + record.type[i].first.UseName() + " saw: " + m_fields[i].first.UseName();
+                m_errorMsg = msg;
                 return false;
             }
             if (record.type[i].first != m_fields[i].first)
@@ -310,8 +313,9 @@ public:
                 m_errorCode = ErrorCode::Err28;
                 return false;
             }
-            return true;
         }
+
+        return true;
     }
 
     template<typename T>
@@ -352,4 +356,95 @@ public:
 bool Types::IsNameType(const Type& type)
 {
     return boost::apply_visitor(IsNameTypeVisitor(), type);
+}
+
+class FillNameTypesVisitor
+    : public boost::static_visitor<bool>
+{
+public:
+    FillNameTypesVisitor(
+            const std::shared_ptr<TypeEnvironment>& env,
+            ErrorCode& errorCode, std::string& errorMsg)
+        : m_env(env)
+        , m_errorCode(errorCode)
+        , m_errorMsg(errorMsg)
+        {
+        }
+
+    bool operator()(UniqueIdTagged<RecordTy>& record) const
+    {
+        for (auto& field : record.type)
+        {
+            if (Types::IsNameType(field.second))
+            {
+                auto ty = m_env->LookUp(Types::GetSymbolFromNameType(field.second));
+                if (!ty || !*ty)
+                {
+                    throw CompilerErrorException("Attempt to fill in name types when not all name types are valid");
+                }
+                
+                TypeFactory::AddTypeToName(field.second, (*ty)->UseType());
+            }
+        }
+        return true;
+    }
+
+    template <typename T>
+    bool operator()(T&) const
+    {
+        m_errorCode = ErrorCode::Err29;
+        return false;
+    }
+
+private:
+    std::shared_ptr<TypeEnvironment> m_env;
+    ErrorCode& m_errorCode;
+    std::string& m_errorMsg;
+};
+
+bool Types::FillNameTypes(Type& type, const std::shared_ptr<TypeEnvironment>& env, ErrorCode& errorCode, std::string& errorMsg)
+{
+    return boost::apply_visitor(FillNameTypesVisitor(env, errorCode, errorMsg), type);
+}
+
+class GetSymbolFromNameTypeVisitor
+    : public boost::static_visitor<Symbol>
+{
+public:
+    Symbol operator()(const NameTy& type) const
+    {
+        return type.first;
+    }
+
+    template <typename T>
+    Symbol operator()(const T&) const
+    {
+        throw CompilerErrorException("Attempt to get symbol from non-name type");
+    }
+};
+
+Symbol Types::GetSymbolFromNameType(const Type& type)
+{
+    return boost::apply_visitor(GetSymbolFromNameTypeVisitor(), type);
+}
+
+class IsStrictlyNilVisitor
+    : public boost::static_visitor<bool>
+{
+public:
+    bool operator()(const NilTy& ty) const
+    {
+        return true;
+    }
+
+    template <typename T>
+    bool operator()(const T&) const
+    {
+        return false;
+    }
+};
+
+bool Types::IsStrictlyNil(const Type& type)
+{
+    return boost::apply_visitor(IsStrictlyNilVisitor(), type);
 }
