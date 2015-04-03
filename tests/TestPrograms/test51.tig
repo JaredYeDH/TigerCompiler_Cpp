@@ -1,0 +1,8 @@
+let
+ type list = {rest: list}
+
+ function foo(a: list) : list =
+      list{rest=a.rest}
+in
+    ()
+end
