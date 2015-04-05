@@ -277,8 +277,9 @@ class IsRecordTypeWithMatchingFieldsVisitor
     : public boost::static_visitor<bool>
 {
 public:
-    IsRecordTypeWithMatchingFieldsVisitor(const RecordTy& fields, ErrorCode& errorCode, std::string& errorMsg)
+    IsRecordTypeWithMatchingFieldsVisitor(const RecordTy& fields, const std::shared_ptr<TypeEnvironment>& env, ErrorCode& errorCode, std::string& errorMsg)
         : m_fields(fields)
+        , m_env(env)
         , m_errorCode(errorCode)
         , m_errorMsg(errorMsg)
     {
@@ -298,7 +299,12 @@ public:
             auto fieldTy = m_fields[i].second;
             if (Types::IsNameType(fieldTy))
             {
-                throw CompilerErrorException("actual types should not be name types");
+                auto lookup = m_env->LookUp(Types::GetSymbolFromNameType(m_fields[i].second));
+                if (!lookup)
+                {
+                    throw CompilerErrorException("Record uses a name type that was not filled out");
+                }
+                fieldTy = (*lookup)->UseType();
             }
 
             if (!AreEqualTypes(recTy, fieldTy))
@@ -328,13 +334,14 @@ public:
 
 private:
     const RecordTy& m_fields;
+    const std::shared_ptr<TypeEnvironment> m_env;
     ErrorCode& m_errorCode;
     std::string& m_errorMsg;
 };
 
-bool Types::IsRecordTypeWithMatchingFields(const Type& type, const RecordTy& fieldTypes, ErrorCode& errorCode, std::string& errorMsg)
+bool Types::IsRecordTypeWithMatchingFields(const Type& type, const RecordTy& fieldTypes, const std::shared_ptr<TypeEnvironment>& env, ErrorCode& errorCode, std::string& errorMsg)
 {
-    return boost::apply_visitor(IsRecordTypeWithMatchingFieldsVisitor(fieldTypes, errorCode, errorMsg), type);
+    return boost::apply_visitor(IsRecordTypeWithMatchingFieldsVisitor(fieldTypes, env, errorCode, errorMsg), type);
 }
 
 class IsNameTypeVisitor
@@ -447,4 +454,50 @@ public:
 bool Types::IsStrictlyNil(const Type& type)
 {
     return boost::apply_visitor(IsStrictlyNilVisitor(), type);
+}
+
+class TypeStringVisitor
+    : public boost::static_visitor<std::string>
+{
+public:
+    std::string operator()(const IntTy&) const
+    {
+        return "int";
+    }
+
+    std::string operator()(const StringTy&) const
+    {
+        return "string";
+    }
+
+    std::string operator()(const NilTy&) const
+    {
+        return "nil";
+    }
+    
+    std::string operator()(const UnitTy&) const
+    {
+        return "unit";
+    }
+
+    std::string operator()(const UniqueIdTagged<RecordTy>& rec) const
+    {
+        return "TODO: record";
+    }
+
+    template<typename T>
+    std::string operator()(const UniqueIdTagged<T>& array) const
+    {
+        return "array of " + Types::TypeString(array.type);
+    }
+
+    std::string operator()(const NameTy& name) const
+    {
+        return "TODO: nameTy";
+    }
+};
+
+std::string Types::TypeString(const Type& type)
+{
+    return boost::apply_visitor(TypeStringVisitor(), type);
 }

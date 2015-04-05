@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include "Types.h"
+#include "Environments.h"
 
 class TypeTest : public ::testing::Test
 {
@@ -171,8 +172,9 @@ TEST_F(TypeTest, StripLeadingNameTypes_WhenNoType_Throws)
 TEST_F(TypeTest, IsRecordTypeWithMatchingFields_NoFields_Ok)
 {
     RecordTy fieldTypes;
+    auto env = TypeEnvironment::GenerateBaseTypeEnvironment();
     Type t = TypeFactory::MakeRecordType(fieldTypes);
     ErrorCode code;
     std::string msg;
-    ASSERT_TRUE(Types::IsRecordTypeWithMatchingFields(t, fieldTypes, code, msg));
+    ASSERT_TRUE(Types::IsRecordTypeWithMatchingFields(t, fieldTypes, env, code, msg));
 }

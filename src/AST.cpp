@@ -175,9 +175,21 @@ Type CallExpression::TypeCheck()
         args[i]->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
 
         Type argTy = args[i]->TypeCheck();
+        if (Types::IsNameType(argTy))
+        {
+            auto actual = UseTypeEnvironment()->LookUp(Types::GetSymbolFromNameType(argTy));
+            if (!actual)
+            {
+                throw CompilerErrorException("Use of non defined nametype in call expression");
+            }
+            argTy = (*actual)->UseType();
+        }
+        
         if (!AreEqualTypes(argTy, formals[i]))
         {
-            ReportTypeError(ErrorCode::Err8);
+            std::stringstream ss;
+            ss << "Argument " << i << " should be " << Types::TypeString(formals[i]) << " but saw " << Types::TypeString(argTy);
+            ReportTypeError(ErrorCode::Err8, ss.str());
         }
     }
 
@@ -240,7 +252,7 @@ Type RecordExpression::TypeCheck()
         fieldTypes.push_back({field.field, ty});
     }
 
-    if (!Types::IsRecordTypeWithMatchingFields(expectedType, fieldTypes, errorCode, errorMessage))
+    if (!Types::IsRecordTypeWithMatchingFields(expectedType, fieldTypes, UseTypeEnvironment(), errorCode, errorMessage))
     {
         ReportTypeError(errorCode, errorMessage);
     }
@@ -664,7 +676,9 @@ Type NameType::TypeCheck()
     {
         ReportTypeError(ErrorCode::Err0, name.UseName());
     }
-    return (*ty)->UseType();
+    Type actual = (*ty)->UseType();
+
+    return actual;
 }
 
 Type RecordType::TypeCheck()

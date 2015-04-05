@@ -44,13 +44,14 @@ namespace Types
 {
 Type StripLeadingNameTypes(const Type& type);
 boost::optional<Type> GetFieldFromRecord(const Type& type, const Symbol& symbol);
-bool IsRecordTypeWithMatchingFields(const Type& type, const RecordTy& fieldTypes, ErrorCode& errorCode, std::string& errorMsg);
+bool IsRecordTypeWithMatchingFields(const Type& type, const RecordTy& fieldTypes, const std::shared_ptr<TypeEnvironment>& env, ErrorCode& errorCode, std::string& errorMsg);
 bool IsArrayType(const Type& type);
 boost::optional<Type> GetTypeOfArray(const Type& type);
 bool IsNameType(const Type& type);
 bool FillNameTypes(Type& type, const std::shared_ptr<TypeEnvironment>& env, ErrorCode& errorCode, std::string& errorMsg);
 Symbol GetSymbolFromNameType(const Type& type);
 bool IsStrictlyNil(const Type& type);
+std::string TypeString(const Type& type);
 }
 
 class TypeFactory

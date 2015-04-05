@@ -1,0 +1,10 @@
+let 
+
+ type list = {first: int, rest: list}
+
+ function merge(a: list, b: list) : list =
+   merge(a.rest,b)
+
+in
+  ()
+end
