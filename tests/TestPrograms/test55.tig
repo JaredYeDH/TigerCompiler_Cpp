@@ -1,0 +1,6 @@
+/* syntax error */
+let
+    var a = 1
+in
+    ()
+end

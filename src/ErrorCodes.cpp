@@ -78,7 +78,9 @@ const char* ErrorCodes::GetAssociatedMessage(ErrorCode error)
         {ErrorCode::Err70, "Err70 - Procedure (function with no type annotation for return type) may not return value"},
         {ErrorCode::Err71, "Err71 - Attempt to init array with non array type"},
         {ErrorCode::Err72, "Err72 - It is illegal to shadow a value previously defined in the same block of mutally recursive types"},
-        {ErrorCode::Err73, "Err73 - mutually recursive types with cycles must pass through records or arrays"}
+        {ErrorCode::Err73, "Err73 - mutually recursive types with cycles must pass through records or arrays"},
+        {ErrorCode::Err74, "Err74 - keyword break must be used only inside of for or while expressions"},
+        {ErrorCode::Err75, "Err75 - saw and = when a := was excpeted"}
     };
 
     auto err = errors.find(error);

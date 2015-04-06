@@ -609,7 +609,15 @@ unique_ptr<Declaration> Parser::ParseDecl()
         auto assign = m_tokenStream.PeekNextToken();
 		if (assign.GetTokenType() != PrimativeToken::Assign)
 		{
-            m_errorReporter->AddError({ErrorCode::Err53, assign.UsePosition(), ""});
+            if (assign.GetTokenType() == PrimativeToken::Equal)
+            {
+                m_errorReporter->AddError({ErrorCode::Err75, assign.UsePosition(), ""});
+                assign = m_tokenStream.GetNextToken();
+            }
+            else
+            {
+                m_errorReporter->AddError({ErrorCode::Err53, assign.UsePosition(), ""});
+            }
 		}
         else
         {

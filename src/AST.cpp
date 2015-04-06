@@ -5,6 +5,7 @@ using namespace AST;
 
 std::shared_ptr<CompileTimeErrorReporter> AstNode::m_errorReporter;
 std::shared_ptr<WarningReporter> AstNode::m_warningReporter;
+uint8_t AstNode::m_loopScope;
 
 void AstNode::SetStaticErrorReporters(const std::shared_ptr<CompileTimeErrorReporter>& errReporter, const std::shared_ptr<WarningReporter>& warningReporter)
 {
@@ -16,6 +17,25 @@ void AstNode::ReportTypeError(ErrorCode errorCode, const SupplementalErrorMsg& m
 {
     Error err { errorCode, UsePosition(), message };
     UseErrorReporter()->AddError(err);
+}
+
+bool AstNode::InLoopScope() const
+{
+    return m_loopScope > 0;
+}
+
+void AstNode::EnterLoopScope()
+{
+    m_loopScope++;
+}
+
+void AstNode::ExitLoopScope()
+{
+    if (m_loopScope == 0)
+    {
+        throw CompilerErrorException("Attempt to leave loop scope when already completely out of loop scope");
+    }
+    m_loopScope--;
 }
 
 std::shared_ptr<CompileTimeErrorReporter>& AstNode::UseErrorReporter()
@@ -344,7 +364,9 @@ Type WhileExpression::TypeCheck()
     {
         ReportTypeError(ErrorCode::Err15);
     }
+    EnterLoopScope();
     auto bodyTy = body->TypeCheck();
+    ExitLoopScope();
     if (!AreEqualTypes(TypeFactory::MakeUnitType(), bodyTy))
     {
         ReportTypeError(ErrorCode::Err66);
@@ -356,7 +378,7 @@ Type ForExpression::TypeCheck()
 {
     assert(UseValueEnvironment());
     assert(UseTypeEnvironment());
- 
+    
     low->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
     high->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
     Type lTy = low->TypeCheck();
@@ -367,6 +389,7 @@ Type ForExpression::TypeCheck()
     }
 
     UseValueEnvironment()->BeginScope();
+    EnterLoopScope();
     {
         bool shadowed;
         UseValueEnvironment()->Insert(var, std::make_shared<VarEntry>(lTy), shadowed, true /*immutable*/);
@@ -383,6 +406,7 @@ Type ForExpression::TypeCheck()
         }
     }
     UseValueEnvironment()->EndScope();
+    ExitLoopScope();
     return TypeFactory::MakeUnitType();
 }
 
@@ -390,7 +414,11 @@ Type BreakExpression::TypeCheck()
 {
     assert(UseValueEnvironment());
     assert(UseTypeEnvironment());
- 
+    
+    if (!InLoopScope())
+    {
+        ReportTypeError(ErrorCode::Err74);
+    }
     return TypeFactory::MakeUnitType();
 }
 

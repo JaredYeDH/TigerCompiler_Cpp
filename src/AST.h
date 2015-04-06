@@ -127,6 +127,11 @@ struct AstNode
 
     virtual void ReportTypeError(ErrorCode errorCode, const SupplementalErrorMsg& message = "");
 
+    virtual bool InLoopScope() const;
+
+    virtual void EnterLoopScope();
+    virtual void ExitLoopScope();
+
 protected:
     virtual void SetPosition(const Position& position)
     {
@@ -142,6 +147,7 @@ private:
     // TODO: this is hacky. These should be wired up correctly, not static.
     static std::shared_ptr<CompileTimeErrorReporter> m_errorReporter;
     static std::shared_ptr<WarningReporter> m_warningReporter;
+    static uint8_t m_loopScope;
 };
 
 struct Expression : public AstNode {};
