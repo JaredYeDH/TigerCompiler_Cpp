@@ -1,4 +1,5 @@
 #include "AST.h"
+#include <set>
 
 using namespace AST;
 
@@ -290,6 +291,11 @@ Type AssignmentExpression::TypeCheck()
         ReportTypeError(ErrorCode::Err12);
     }
 
+    if (var->IsImmutable())
+    {
+        ReportTypeError(ErrorCode::Err67);
+    }
+
     return TypeFactory::MakeUnitType();
 }
 
@@ -363,7 +369,7 @@ Type ForExpression::TypeCheck()
     UseValueEnvironment()->BeginScope();
     {
         bool shadowed;
-        UseValueEnvironment()->Insert(var, std::make_shared<VarEntry>(lTy), shadowed);
+        UseValueEnvironment()->Insert(var, std::make_shared<VarEntry>(lTy), shadowed, true /*immutable*/);
         if (shadowed)
         {
             std::string err("Shadowing of " + var.UseName());
@@ -455,8 +461,8 @@ Type CheckFunctionDecl(
         const EnvEntry& entry,
         const std::shared_ptr<CompileTimeErrorReporter>& errorReporter,
         const std::shared_ptr<WarningReporter>& warningReporter,
-        std::shared_ptr<ValueEnvironment>& valEnv,
-        std::shared_ptr<TypeEnvironment>& tyEnv,
+        const std::shared_ptr<ValueEnvironment>& valEnv,
+        const std::shared_ptr<TypeEnvironment>& tyEnv,
         const FunDec& decl)
 {
     if (!entry.IsFunction())
@@ -513,8 +519,8 @@ Type CheckFunctionDecl(
 std::shared_ptr<FunEntry> GetFunctionDeclHeader(
         const std::shared_ptr<CompileTimeErrorReporter>& errorReporter,
         const std::shared_ptr<WarningReporter>& warningReporter,
-        std::shared_ptr<ValueEnvironment>& valEnv,
-        std::shared_ptr<TypeEnvironment>& tyEnv,
+        const std::shared_ptr<ValueEnvironment>& valEnv,
+        const std::shared_ptr<TypeEnvironment>& tyEnv,
         const FunDec& decl)
 {
     Type ty;
@@ -631,6 +637,25 @@ Type VarDeclaration::TypeCheck()
     return TypeFactory::MakeUnitType();
 }
 
+bool HasTypeCycle(const TyDec& tyDec, const std::shared_ptr<TypeEnvironment>& env)
+{
+    auto type = (*env->LookUp(tyDec.name))->UseType();
+    std::set<Symbol> seen;
+    seen.insert(tyDec.name);
+
+    while (Types::IsNameType(type))
+    {
+        auto name = Types::GetSymbolFromNameType(type);
+        if (seen.count(name) != 0)
+        {
+            return true;
+        }
+        seen.insert(name);
+        type = (*env->LookUp(name))->UseType();
+    }
+    return false;
+}
+
 Type TypeDeclaration::TypeCheck()
 {
     assert(UseValueEnvironment());
@@ -659,7 +684,16 @@ Type TypeDeclaration::TypeCheck()
         {
             throw CompilerErrorException("Expected type to exist in type environment. This breaks recursive types");
         }
+
         (*envValue)->ReplaceNameTypeWithType(ty);
+    }
+
+    for (const TyDec& tyDec : types)
+    {
+        if (HasTypeCycle(tyDec, UseTypeEnvironment()))
+        {
+            ReportTypeError(ErrorCode::Err73);
+        }
     }
 
     // TODO: does this return something different?
@@ -675,6 +709,8 @@ Type NameType::TypeCheck()
     if (!ty)
     {
         ReportTypeError(ErrorCode::Err0, name.UseName());
+        // error correct
+        return TypeFactory::MakeIntType();
     }
     Type actual = (*ty)->UseType();
 

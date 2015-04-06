@@ -44,7 +44,8 @@ public:
         {45, {ErrorCode::Err23}},
         {47, {ErrorCode::Err72}},
         {48, {ErrorCode::Err72}},
-        {49, {ErrorCode::Err41}} // TODO a better error for this one
+        {49, {ErrorCode::Err41}}, // TODO a better error for this one
+        {53, {ErrorCode::Err73}}
     };
 
     uint32_t GetTestNumberFromName(const string& test)

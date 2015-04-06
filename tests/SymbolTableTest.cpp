@@ -86,3 +86,60 @@ TEST_F(SymbolTableTest, SymbolTableCanGetValueFromOuterScopeIfNotShadowed)
     table->Insert(SymbolFactory::GenerateSymbol("b"), 5, shadowed);
     ASSERT_EQ(table->LookUp(SymbolFactory::GenerateSymbol("a")), 4);
 }
+
+TEST_F(SymbolTableTest, LookupMutable_IsMutable)
+{
+    table->BeginScope();
+    bool shadowed;
+    auto symbol = SymbolFactory::GenerateSymbol("a");
+    table->Insert(symbol, 4, shadowed);
+
+    bool isImmutable;
+    auto look = table->LookUp(symbol, &isImmutable);
+    ASSERT_FALSE(isImmutable);
+}
+
+TEST_F(SymbolTableTest, LookupMutable_IsMutable_Explicit)
+{
+    table->BeginScope();
+    bool shadowed;
+    auto symbol = SymbolFactory::GenerateSymbol("a");
+    table->Insert(symbol, 4, shadowed, false);
+
+    bool isImmutable;
+    auto look = table->LookUp(symbol, &isImmutable);
+    ASSERT_FALSE(isImmutable);
+}
+
+TEST_F(SymbolTableTest, LookupImmutable_IsImmutable)
+{
+    table->BeginScope();
+    bool shadowed;
+    auto symbol = SymbolFactory::GenerateSymbol("a");
+    table->Insert(symbol, 4, shadowed, true);
+
+    bool isImmutable;
+    auto look = table->LookUp(symbol, &isImmutable);
+    ASSERT_TRUE(isImmutable);
+}
+
+TEST_F(SymbolTableTest, ScopeAllowsHidingOfMutablity)
+{
+    table->BeginScope();
+    bool shadowed;
+    auto symbol = SymbolFactory::GenerateSymbol("a");
+    table->Insert(symbol, 4, shadowed, true);
+
+    bool isImmutable;
+    auto look = table->LookUp(symbol, &isImmutable);
+    ASSERT_TRUE(isImmutable);
+
+    table->BeginScope();
+    table->Insert(symbol, 5, shadowed, false);
+    look = table->LookUp(symbol, &isImmutable);
+    ASSERT_FALSE(isImmutable);
+
+    table->EndScope();
+    look = table->LookUp(symbol, &isImmutable);
+    ASSERT_TRUE(isImmutable);
+}

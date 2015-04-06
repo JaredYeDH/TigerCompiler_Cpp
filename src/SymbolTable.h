@@ -10,8 +10,8 @@
 template <typename Type>
 struct ISymbolTable
 {
-    virtual void Insert(const Symbol& symbol, const Type& entry, bool& overwrite) = 0;
-    virtual boost::optional<Type> LookUp(const Symbol& symbol) const = 0;
+    virtual void Insert(const Symbol& symbol, const Type& entry, bool& overwrite, bool isImmutable = false) = 0;
+    virtual boost::optional<Type> LookUp(const Symbol& symbol, bool* isImmutable = nullptr) const = 0;
     virtual void BeginScope() = 0;
     virtual void EndScope() = 0;
     virtual ~ISymbolTable() {}
@@ -24,7 +24,7 @@ class SymbolTable
     : public ISymbolTable<Type>
 {
 public:
-    void Insert(const Symbol& symbol, const Type& entry, bool& overwrite) override
+    void Insert(const Symbol& symbol, const Type& entry, bool& overwrite, bool isImmutable = false) override
     {
         overwrite = false;
         if (m_scopeStack.empty())
@@ -47,18 +47,24 @@ public:
             }
         }
 
-        m_table[symbol].push(entry);
+        m_table[symbol].push({entry, isImmutable});
         stackFrame.push_back(symbol);
     }
 
-    boost::optional<Type> LookUp(const Symbol& symbol) const override
+    boost::optional<Type> LookUp(const Symbol& symbol, bool* isImmutable = nullptr) const override
     {
         auto iter = m_table.find(symbol);
+
         boost::optional<Type> elm;
         if (iter != end(m_table) && !iter->second.empty())
         {
-            elm = iter->second.top();
+            elm = iter->second.top().first;
+            if (isImmutable)
+            {
+                *isImmutable = iter->second.top().second;
+            }
         }
+
         return elm;
     }
 
@@ -86,7 +92,7 @@ public:
 private:
     SymbolTable(const SymbolTable&) = delete;
 
-    std::map<Symbol, std::stack<Type>> m_table;
+    std::map<Symbol, std::stack<std::pair<Type, bool>>> m_table;
     std::stack<std::vector<Symbol>> m_scopeStack;
     friend struct SymbolTableFactory;
 };

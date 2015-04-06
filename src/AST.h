@@ -104,14 +104,19 @@ struct AstNode
         m_typeEnvironment = tyEnv;
     }
 
-    virtual std::shared_ptr<ValueEnvironment>& UseValueEnvironment()
+    virtual const std::shared_ptr<ValueEnvironment>& UseValueEnvironment()
     {
         return m_valueEnvironment;
     }
 
-    virtual std::shared_ptr<TypeEnvironment>& UseTypeEnvironment()
+    virtual const std::shared_ptr<TypeEnvironment>& UseTypeEnvironment()
     {
         return m_typeEnvironment;
+    }
+
+    virtual const std::shared_ptr<ValueEnvironment>& UseValueEnvironment() const
+    {
+        return m_valueEnvironment;
     }
 
     virtual std::shared_ptr<CompileTimeErrorReporter>& UseErrorReporter();
@@ -141,7 +146,10 @@ private:
 
 struct Expression : public AstNode {};
 
-struct Var : public AstNode {};
+struct Var : public AstNode
+{
+    virtual bool IsImmutable() const = 0;
+};
 
 struct Declaration : public AstNode {};
 
@@ -212,6 +220,13 @@ struct SimpleVar
         return "{SimpleVar: " + symbol.UseName() + "}";
     }
 
+    bool IsImmutable() const override
+    {
+        bool isImmutable;
+        UseValueEnvironment()->LookUp(symbol, &isImmutable);
+        return isImmutable;
+    }
+
     Type TypeCheck() override;
 };
 
@@ -230,6 +245,11 @@ struct FieldVar
     std::string DumpAST() const override
     {
         return "{FieldVar: " + symbol.UseName() + " : " + var->DumpAST() + "}";
+    }
+
+    virtual bool IsImmutable() const override
+    {
+        return false;
     }
 };
 
@@ -251,6 +271,10 @@ struct SubscriptVar
         return "{SubscriptVar: " + var->DumpAST() + "[" + expression->DumpAST() +"]}";
     }
 
+    virtual bool IsImmutable() const override
+    {
+        return false;
+    }
 };
 
 struct VarExpression

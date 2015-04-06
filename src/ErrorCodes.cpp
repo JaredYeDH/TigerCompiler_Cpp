@@ -72,7 +72,7 @@ const char* ErrorCodes::GetAssociatedMessage(ErrorCode error)
         {ErrorCode::Err64, "Err64 - Expected colon after id in type fields"},
         {ErrorCode::Err65, "Err65 - Expected type literal for type annotation following id :"},
         {ErrorCode::Err66, "Err66 - Body of while must be of unit type"},
-        {ErrorCode::Err67, "Err67 - Attempt to assign to variable in for loop"},
+        {ErrorCode::Err67, "Err67 - Attempt to assign to immutable variable"},
         {ErrorCode::Err68, "Err68 - if-then returns non-unit"},
         {ErrorCode::Err69, "Err69 - recursive definitions interupted."},
         {ErrorCode::Err70, "Err70 - Procedure (function with no type annotation for return type) may not return value"},
