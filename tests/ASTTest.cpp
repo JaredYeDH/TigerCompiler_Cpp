@@ -26,11 +26,6 @@ public:
         ast = parser->Parse();
     }
 
-    uint8_t CountNumberOfEscapes()
-    {
-        return 0;
-    }
-
     std::shared_ptr<CompileTimeErrorReporter> errors;
     std::shared_ptr<WarningReporter> warnings;
     std::unique_ptr<Program> ast;

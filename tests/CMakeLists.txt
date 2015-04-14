@@ -15,6 +15,7 @@ set( test_sources
     TypeTest.cpp
     EnvironmentsTest.cpp
     EndToEndTests.cpp
+    EscapeCalculatorTest.cpp
 )
 
 add_executable( AllTests

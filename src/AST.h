@@ -3,6 +3,7 @@
 #include "Position.h"
 #include "Symbol.h"
 #include "CompileTimeErrorHandler.h"
+#include "EscapeCalculator.h"
 
 #include <memory>
 #include <string>
@@ -55,8 +56,6 @@ inline const char* DumpOp(BinOp op)
     return "<BustedOp>";
 }
 
-typedef SymbolTable<std::pair<uint32_t, bool*>> EscapeTable;
-
 struct Field
 {
     Symbol name;
@@ -94,7 +93,7 @@ struct AstNode
     
     void SetStaticErrorReporters(const std::shared_ptr<CompileTimeErrorReporter>& errReporter, const std::shared_ptr<WarningReporter>& warningReporter);
 
-        void SetStaticEscapeTable(const std::shared_ptr<EscapeTable>& escapes);
+        void SetStaticEscapeCalculator(const std::shared_ptr<IEscapeCalculator>& escapes);
 
     void SetEnvironments(const std::shared_ptr<ValueEnvironment>& valEnv, const std::shared_ptr<TypeEnvironment>& tyEnv)
     {
@@ -128,9 +127,9 @@ protected:
         return m_valueEnvironment;
     }
 
-    virtual const std::shared_ptr<EscapeTable>& UseEscapeTable() const
+    virtual const std::shared_ptr<IEscapeCalculator>& UseEscapeCalculator() const
     {
-        return m_escapetable;
+        return m_escapecalc;
     }
 
     virtual std::shared_ptr<CompileTimeErrorReporter>& UseErrorReporter();
@@ -159,7 +158,7 @@ private:
     static std::shared_ptr<CompileTimeErrorReporter> m_errorReporter;
     static std::shared_ptr<WarningReporter> m_warningReporter;
     static uint8_t m_loopScope;
-    static std::shared_ptr<EscapeTable> m_escapetable;
+    static std::shared_ptr<IEscapeCalculator> m_escapecalc;
 };
 
 struct Expression : public AstNode {};
@@ -182,7 +181,7 @@ public:
             const std::shared_ptr<TypeEnvironment>& typeEnv,
             const std::shared_ptr<CompileTimeErrorReporter>& errorReporter,
             const std::shared_ptr<WarningReporter>& warningReporter,
-            std::shared_ptr<EscapeTable> escapeTable = nullptr)
+            std::shared_ptr<IEscapeCalculator> escapeCalc = nullptr)
         : m_expression(std::move(expr))
         , m_valueEnvironment(valEnv)
         , m_typeEnvironment(typeEnv)
@@ -190,11 +189,11 @@ public:
         , m_warningReporter(warningReporter)
     {
         m_expression->SetStaticErrorReporters(errorReporter, warningReporter);
-        if (!escapeTable)
+        if (!escapeCalc)
         {
-            escapeTable = std::make_shared<EscapeTable>();
+            escapeCalc = EscapeCalculatorFactory::MakeEscapeCalculator();
         }
-        m_expression->SetStaticEscapeTable(escapeTable);
+        m_expression->SetStaticEscapeCalculator(escapeCalc);
     }
 
     Program(

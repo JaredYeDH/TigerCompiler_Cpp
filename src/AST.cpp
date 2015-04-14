@@ -6,7 +6,7 @@ using namespace AST;
 std::shared_ptr<CompileTimeErrorReporter> AstNode::m_errorReporter;
 std::shared_ptr<WarningReporter> AstNode::m_warningReporter;
 uint8_t AstNode::m_loopScope;
-std::shared_ptr<EscapeTable> AstNode::m_escapetable;
+std::shared_ptr<IEscapeCalculator> AstNode::m_escapecalc;
 
 void AstNode::SetStaticErrorReporters(const std::shared_ptr<CompileTimeErrorReporter>& errReporter, const std::shared_ptr<WarningReporter>& warningReporter)
 {
@@ -14,9 +14,9 @@ void AstNode::SetStaticErrorReporters(const std::shared_ptr<CompileTimeErrorRepo
     m_warningReporter = warningReporter;
 }
 
-void AstNode::SetStaticEscapeTable(const std::shared_ptr<EscapeTable>& escapeTable)
+void AstNode::SetStaticEscapeCalculator(const std::shared_ptr<IEscapeCalculator>& escapeCalc)
 {
-    m_escapetable = escapeTable;
+    m_escapecalc = escapeCalc;
 }
 
 void AstNode::ReportTypeError(ErrorCode errorCode, const SupplementalErrorMsg& message)
@@ -787,16 +787,7 @@ Type ArrayType::TypeCheck()
 
 void SimpleVar::CalculateEscapes()
 {
-    auto var = UseEscapeTable()->LookUp(symbol);
-    if (!var)
-    {
-        throw CompilerErrorException("Simple vars should be entered into escape table");
-    }
-
-    if (var->first < GetCurrentDepth())
-    {
-        *(var->second) = true;
-    }
+    UseEscapeCalculator()->EscapeIfNecessary(symbol);    
 }
 
 void FieldVar::CalculateEscapes()
