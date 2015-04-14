@@ -6,11 +6,17 @@ using namespace AST;
 std::shared_ptr<CompileTimeErrorReporter> AstNode::m_errorReporter;
 std::shared_ptr<WarningReporter> AstNode::m_warningReporter;
 uint8_t AstNode::m_loopScope;
+std::shared_ptr<EscapeTable> AstNode::m_escapetable;
 
 void AstNode::SetStaticErrorReporters(const std::shared_ptr<CompileTimeErrorReporter>& errReporter, const std::shared_ptr<WarningReporter>& warningReporter)
 {
     m_errorReporter = errReporter;
     m_warningReporter = warningReporter;
+}
+
+void AstNode::SetStaticEscapeTable(const std::shared_ptr<EscapeTable>& escapeTable)
+{
+    m_escapetable = escapeTable;
 }
 
 void AstNode::ReportTypeError(ErrorCode errorCode, const SupplementalErrorMsg& message)
@@ -777,4 +783,82 @@ Type ArrayType::TypeCheck()
     }
     Type type = (*ty)->UseType();
     return TypeFactory::MakeArrayType(type);
+}
+
+void SimpleVar::CalculateEscapes()
+{
+    auto var = UseEscapeTable()->LookUp(symbol);
+    if (!var)
+    {
+        throw CompilerErrorException("Simple vars should be entered into escape table");
+    }
+
+    if (var->first < GetCurrentDepth())
+    {
+        *(var->second) = true;
+    }
+}
+
+void FieldVar::CalculateEscapes()
+{
+}
+
+void SubscriptVar::CalculateEscapes()
+{
+}
+
+void VarExpression::CalculateEscapes()
+{
+}
+
+void CallExpression::CalculateEscapes()
+{
+}
+
+void OpExpression::CalculateEscapes()
+{
+}
+
+void RecordExpression::CalculateEscapes()
+{
+}
+
+void SeqExpression::CalculateEscapes()
+{
+}
+
+void AssignmentExpression::CalculateEscapes()
+{
+}
+
+void IfExpression::CalculateEscapes()
+{
+}
+
+void WhileExpression::CalculateEscapes()
+{
+}
+
+void ForExpression::CalculateEscapes()
+{
+}
+
+void LetExpression::CalculateEscapes()
+{
+}
+
+void ArrayExpression::CalculateEscapes()
+{
+}
+
+void FunctionDeclaration::CalculateEscapes()
+{
+}
+
+void VarDeclaration::CalculateEscapes()
+{
+}
+
+void TypeDeclaration::CalculateEscapes()
+{
 }

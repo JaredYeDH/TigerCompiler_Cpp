@@ -55,16 +55,17 @@ inline const char* DumpOp(BinOp op)
     return "<BustedOp>";
 }
 
+typedef SymbolTable<std::pair<uint32_t, bool*>> EscapeTable;
+
 struct Field
 {
     Symbol name;
-    bool escape;
+    bool escape = false;
     Symbol type;
     Position position;
 
     Field(const Symbol& nm, const Symbol& ty, const Position& pos)
         : name(nm)
-        , escape(true)
         , type(ty)
         , position(pos)
     {
@@ -89,9 +90,11 @@ struct AstNode
     
     virtual ~AstNode() {}
     
-    AstNode()
-        : m_position({0,0})
-    {}
+    virtual void CalculateEscapes() = 0;
+    
+    void SetStaticErrorReporters(const std::shared_ptr<CompileTimeErrorReporter>& errReporter, const std::shared_ptr<WarningReporter>& warningReporter);
+
+        void SetStaticEscapeTable(const std::shared_ptr<EscapeTable>& escapes);
 
     void SetEnvironments(const std::shared_ptr<ValueEnvironment>& valEnv, const std::shared_ptr<TypeEnvironment>& tyEnv)
     {
@@ -104,7 +107,13 @@ struct AstNode
         m_typeEnvironment = tyEnv;
     }
 
-    virtual const std::shared_ptr<ValueEnvironment>& UseValueEnvironment()
+
+    AstNode()
+        : m_position({0,0})
+    {}
+
+protected:
+   virtual const std::shared_ptr<ValueEnvironment>& UseValueEnvironment()
     {
         return m_valueEnvironment;
     }
@@ -119,11 +128,14 @@ struct AstNode
         return m_valueEnvironment;
     }
 
+    virtual const std::shared_ptr<EscapeTable>& UseEscapeTable() const
+    {
+        return m_escapetable;
+    }
+
     virtual std::shared_ptr<CompileTimeErrorReporter>& UseErrorReporter();
 
     virtual std::shared_ptr<WarningReporter>& UseWarningReporter();
-
-    void SetStaticErrorReporters(const std::shared_ptr<CompileTimeErrorReporter>& errReporter, const std::shared_ptr<WarningReporter>& warningReporter);
 
     virtual void ReportTypeError(ErrorCode errorCode, const SupplementalErrorMsg& message = "");
 
@@ -132,7 +144,6 @@ struct AstNode
     virtual void EnterLoopScope();
     virtual void ExitLoopScope();
 
-protected:
     virtual void SetPosition(const Position& position)
     {
         m_position = position;
@@ -148,6 +159,7 @@ private:
     static std::shared_ptr<CompileTimeErrorReporter> m_errorReporter;
     static std::shared_ptr<WarningReporter> m_warningReporter;
     static uint8_t m_loopScope;
+    static std::shared_ptr<EscapeTable> m_escapetable;
 };
 
 struct Expression : public AstNode {};
@@ -169,7 +181,8 @@ public:
             const std::shared_ptr<ValueEnvironment>& valEnv,
             const std::shared_ptr<TypeEnvironment>& typeEnv,
             const std::shared_ptr<CompileTimeErrorReporter>& errorReporter,
-            const std::shared_ptr<WarningReporter>& warningReporter)
+            const std::shared_ptr<WarningReporter>& warningReporter,
+            std::shared_ptr<EscapeTable> escapeTable = nullptr)
         : m_expression(std::move(expr))
         , m_valueEnvironment(valEnv)
         , m_typeEnvironment(typeEnv)
@@ -177,6 +190,11 @@ public:
         , m_warningReporter(warningReporter)
     {
         m_expression->SetStaticErrorReporters(errorReporter, warningReporter);
+        if (!escapeTable)
+        {
+            escapeTable = std::make_shared<EscapeTable>();
+        }
+        m_expression->SetStaticEscapeTable(escapeTable);
     }
 
     Program(
@@ -202,6 +220,11 @@ public:
     }
 
     Type TypeCheck();
+
+    void CalculateEscapes()
+    {
+        m_expression->CalculateEscapes();
+    }
 
 private:
     std::unique_ptr<Expression> m_expression;
@@ -234,6 +257,8 @@ struct SimpleVar
     }
 
     Type TypeCheck() override;
+
+    void CalculateEscapes() override;
 };
 
 struct FieldVar
@@ -257,6 +282,8 @@ struct FieldVar
     {
         return false;
     }
+
+    void CalculateEscapes() override;
 };
 
 struct SubscriptVar
@@ -281,6 +308,8 @@ struct SubscriptVar
     {
         return false;
     }
+
+    void CalculateEscapes() override;
 };
 
 struct VarExpression
@@ -298,6 +327,8 @@ struct VarExpression
     {
         return "{VarExpression: " + var->DumpAST() + "}";
     }
+
+    void CalculateEscapes() override;
 };
 
 struct NilExpression
@@ -313,6 +344,8 @@ struct NilExpression
     {
         return "{NilExpression}";
     }
+
+    void CalculateEscapes() override {}
 };
 
 struct IntExpression
@@ -332,6 +365,8 @@ struct IntExpression
         val << value;
         return "{IntExpression: " + val.str() + "}";
     }
+
+    void CalculateEscapes() override {}
 };
 
 struct StringExpression
@@ -349,6 +384,8 @@ struct StringExpression
     {
         return "{StringExpression: " + value + "}";
     }
+
+    void CalculateEscapes() override {}
 };
 
 struct CallExpression
@@ -375,6 +412,8 @@ struct CallExpression
         ret << "}";
         return ret.str();
     }
+
+    void CalculateEscapes() override;
 };
 
 struct OpExpression
@@ -396,6 +435,8 @@ struct OpExpression
     {
         return "{OpExpression: " + lhs->DumpAST() + DumpOp(op) + rhs->DumpAST() + "}";
     }
+
+    void CalculateEscapes() override;
 };
 
 struct FieldExp
@@ -440,6 +481,8 @@ struct RecordExpression
         ss << "}";
         return ss.str();
     }
+    
+    void CalculateEscapes() override;
 };
 
 struct SeqExpression
@@ -464,6 +507,8 @@ struct SeqExpression
         ss << ")}";
         return ss.str();
     }
+    
+    void CalculateEscapes() override;
 };
 
 struct AssignmentExpression
@@ -483,6 +528,8 @@ struct AssignmentExpression
     {
         return "{AssignmentExpression : " + var->DumpAST() + " := " + expression->DumpAST() + "}";
     }
+
+    void CalculateEscapes() override;
 };
 
 struct IfExpression
@@ -516,6 +563,7 @@ struct IfExpression
         ss << "}";
         return ss.str();
     }
+    void CalculateEscapes() override;
 };
 
 struct WhileExpression
@@ -536,20 +584,21 @@ struct WhileExpression
     {
         return "{WhileExpression : test: " + test->DumpAST() + " body : " + body->DumpAST() + "}";
     }
+
+    void CalculateEscapes() override;
 };
 
 struct ForExpression
     : public Expression
 {
     Symbol var;
-    bool escape;
+    bool escape = false;
     std::unique_ptr<Expression> low;
     std::unique_ptr<Expression> high;
     std::unique_ptr<Expression> body;
 
     ForExpression(const Symbol& v, std::unique_ptr<Expression>&& l, std::unique_ptr<Expression>&& h, std::unique_ptr<Expression>&& b, const Position& pos)
         : var(v)
-        , escape(true)
         , low(move(l))
         , high(move(h))
         , body(move(b))
@@ -562,6 +611,8 @@ struct ForExpression
     {
         return "{ForExpression : low: " + low->DumpAST() + " high: " + high->DumpAST() + " body : " + body->DumpAST() + "}";
     }
+    
+    void CalculateEscapes() override;
 };
 
 struct BreakExpression
@@ -577,6 +628,8 @@ struct BreakExpression
     {
         return "{BreakExpression}";
     }
+    
+    void CalculateEscapes() override {}
 };
 
 struct LetExpression
@@ -604,6 +657,8 @@ struct LetExpression
         ss << " body: " << body->DumpAST() << "}";
         return ss.str();
     }
+
+    void CalculateEscapes() override;
 };
 
 struct ArrayExpression
@@ -626,6 +681,8 @@ struct ArrayExpression
     {
         return "{ArrayExpression: type: " + type.UseName() + " size: " + size->DumpAST() + " init: " + init->DumpAST() + "}";
     }
+
+    void CalculateEscapes() override;
 };
 
 struct FunDec
@@ -686,19 +743,20 @@ struct FunctionDeclaration
         ss << "}";
         return ss.str();
     }
+
+    void CalculateEscapes() override;
 };
 
 struct VarDeclaration
     : public Declaration
 {
    Symbol name;
-   bool escape;
+   bool escape = false;
    boost::optional<Symbol> type;
    std::unique_ptr<Expression> init;
 
    VarDeclaration(const Symbol& id, boost::optional<Symbol> ty, std::unique_ptr<Expression>&& it, const Position& pos)
     : name(id)
-    , escape(true)
     , type(ty)
     , init(std::move(it))
     {
@@ -718,6 +776,8 @@ struct VarDeclaration
         ss << " init " << init->DumpAST() << "}";
         return ss.str();
     }
+
+    void CalculateEscapes() override;
 };
 
 struct TyDec
@@ -761,6 +821,7 @@ struct TypeDeclaration
         ss << "}";
         return ss.str();
     }
+    void CalculateEscapes() override;
 };
 
 struct NameType
@@ -779,6 +840,7 @@ struct NameType
     {
         return "{NameType: " + name.UseName() + "}";
     }
+    void CalculateEscapes() override {}
 };
 
 struct RecordType
@@ -804,6 +866,8 @@ struct RecordType
         ss << "}";
         return ss.str();
     }
+    
+    void CalculateEscapes() override {}
 };
 
 struct ArrayType
@@ -822,6 +886,8 @@ struct ArrayType
     {
         return "{ArrayType : name: " +  name.UseName() + "}";
     }
+    
+    void CalculateEscapes() override {}
 };
 
 }

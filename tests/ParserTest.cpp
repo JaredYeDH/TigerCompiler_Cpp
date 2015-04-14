@@ -302,7 +302,6 @@ void AssertThatAstsMatch(const Expression& lhs, const Expression& rhs)
     }
 }
 
-
 class ParserTest : public ::testing::Test
 {
 public:

@@ -1,12 +1,39 @@
 #include "gtest/gtest.h"
 
 #include "AST.h"
+#include "Parser.h"
 
 using namespace std;
 using namespace AST;
 
 class ASTTest : public ::testing::Test
 {
+public:
+    void SetUp() override
+    {
+        errors = nullptr;
+        warnings = nullptr;
+        ast = nullptr;
+    }
+
+    void CreateFromString(const std::string& program)
+    {
+        unique_ptr<istream> stream = make_unique<stringstream>(program);
+        TokenStream tokenStream(move(stream));
+        errors = make_shared<CompileTimeErrorReporter>();
+        warnings = make_shared<WarningReporter>();
+        auto parser = make_unique<Parser>(move(tokenStream), errors, warnings);
+        ast = parser->Parse();
+    }
+
+    uint8_t CountNumberOfEscapes()
+    {
+        return 0;
+    }
+
+    std::shared_ptr<CompileTimeErrorReporter> errors;
+    std::shared_ptr<WarningReporter> warnings;
+    std::unique_ptr<Program> ast;
 };
 
 extern unique_ptr<Program> MakeTestProgram(unique_ptr<Expression>&& expr);
@@ -64,4 +91,10 @@ TEST_F(ASTTest, TypeCheckSimpleRecursiveTypeDecl)
     auto tyWrapper = tyEnv->LookUp(intlist);
     ASSERT_TRUE(tyWrapper);
     auto tyUnWrapped = (*tyWrapper)->UseType();
+}
+
+TEST_F(ASTTest, CalculateEscapes_NoEscapableValues_NothingMarkedEscaping)
+{
+    CreateFromString("let function foo(x : int) = print(chr(x)) in foo(1) end");
+    ast->CalculateEscapes();
 }
