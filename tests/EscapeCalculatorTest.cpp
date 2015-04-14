@@ -7,12 +7,6 @@ class EscapeCalculatorTest : public ::testing::Test
 {
 };
 
-TEST_F(EscapeCalculatorTest, Fail)
-{
-    std::vector<bool>(4, true);
-    ASSERT_TRUE(false);
-}
-
 TEST_F(EscapeCalculatorTest, TrackingMakesEscapesFalse)
 {
     bool escape = true;
@@ -20,3 +14,32 @@ TEST_F(EscapeCalculatorTest, TrackingMakesEscapesFalse)
     escapeCalc->TrackDecl(SymbolFactory::GenerateSymbol("a"), &escape);
     ASSERT_FALSE(escape);
 }
+
+TEST_F(EscapeCalculatorTest, WhenUsedOutOfCurrentDepth_Escapes)
+{
+    bool escape = false;
+    auto escapeCalc = EscapeCalculatorFactory::MakeEscapeCalculator();
+    auto symbol = SymbolFactory::GenerateSymbol("a");
+    escapeCalc->TrackDecl(symbol, &escape);
+
+    escapeCalc->IncreaseDepth();
+    escapeCalc->EscapeIfNecessary(symbol);
+    ASSERT_TRUE(escape);
+    escapeCalc->DecreaseDepth();
+}
+
+TEST_F(EscapeCalculatorTest, WhenUsedInCurrentDepth_NoEscapes)
+{
+    bool escape = false;
+    auto escapeCalc = EscapeCalculatorFactory::MakeEscapeCalculator();
+    auto symbol = SymbolFactory::GenerateSymbol("a");
+    escapeCalc->TrackDecl(symbol, &escape);
+
+    escapeCalc->IncreaseDepth();
+    escapeCalc->DecreaseDepth();
+
+    escapeCalc->EscapeIfNecessary(symbol);
+    ASSERT_FALSE(escape);
+}
+
+

@@ -28,11 +28,13 @@ private:
 
 void EscapeCalculator::IncreaseDepth()
 {
+    m_escapeTable.BeginScope();
     m_depth++;
 }
 
 void EscapeCalculator::DecreaseDepth()
 {
+    m_escapeTable.EndScope();
     m_depth--;
 }
 

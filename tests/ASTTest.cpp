@@ -90,6 +90,6 @@ TEST_F(ASTTest, TypeCheckSimpleRecursiveTypeDecl)
 
 TEST_F(ASTTest, CalculateEscapes_NoEscapableValues_NothingMarkedEscaping)
 {
-    CreateFromString("let function foo(x : int) = print(chr(x)) in foo(1) end");
+    CreateFromString("let var x : int = 1 function foo(x : int) = print(chr(x)) in foo(1) end");
     ast->CalculateEscapes();
 }
