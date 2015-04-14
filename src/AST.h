@@ -72,7 +72,8 @@ struct Field
 
     std::string DumpAST() const
     {
-        return "{Field: {" + name.UseName() + "," + type.UseName() + "}}";
+        std::string escapeStr = escape ? " escapes" : " does not escape";
+        return "{Field: {" + name.UseName() + "," + type.UseName() +  escapeStr.c_str() + "}}";
     }
 };
 
@@ -772,6 +773,14 @@ struct VarDeclaration
         {
             ss << " type: " << type->UseName();
         }
+        if (escape)
+        {
+            ss << " escapes";
+        }
+        else
+        {
+            ss << " does not escape";
+        }
         ss << " init " << init->DumpAST() << "}";
         return ss.str();
     }
@@ -820,7 +829,9 @@ struct TypeDeclaration
         ss << "}";
         return ss.str();
     }
-    void CalculateEscapes() override;
+    void CalculateEscapes() override
+    {
+    }
 };
 
 struct NameType

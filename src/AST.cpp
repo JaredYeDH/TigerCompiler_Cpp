@@ -792,64 +792,111 @@ void SimpleVar::CalculateEscapes()
 
 void FieldVar::CalculateEscapes()
 {
+    UseEscapeCalculator()->EscapeIfNecessary(symbol);
 }
 
 void SubscriptVar::CalculateEscapes()
 {
+    var->CalculateEscapes();
+    expression->CalculateEscapes();
 }
 
 void VarExpression::CalculateEscapes()
 {
+    var->CalculateEscapes();
 }
 
 void CallExpression::CalculateEscapes()
 {
+    for (auto& arg : args)
+    {
+        arg->CalculateEscapes();
+    }
 }
 
 void OpExpression::CalculateEscapes()
 {
+    lhs->CalculateEscapes();
+    rhs->CalculateEscapes();
 }
 
 void RecordExpression::CalculateEscapes()
 {
+    for (auto& field : fields)
+    {
+        field.expr->CalculateEscapes();
+    }
 }
 
 void SeqExpression::CalculateEscapes()
 {
+    for (auto& expr : expressions)
+    {
+        expr->CalculateEscapes();
+    }
 }
 
 void AssignmentExpression::CalculateEscapes()
 {
+    var->CalculateEscapes();
+    expression->CalculateEscapes();
 }
 
 void IfExpression::CalculateEscapes()
 {
+    test->CalculateEscapes();
+    thenBranch->CalculateEscapes();
+    if (elseBranch)
+    {
+        elseBranch->CalculateEscapes();
+    }
 }
 
 void WhileExpression::CalculateEscapes()
 {
+    test->CalculateEscapes();
+    body->CalculateEscapes();
 }
 
 void ForExpression::CalculateEscapes()
 {
+    // TODO: how does a forexpression escape?
+    low->CalculateEscapes();
+    high->CalculateEscapes();
+    body->CalculateEscapes();
 }
 
 void LetExpression::CalculateEscapes()
 {
+    for (auto& decl : decls)
+    {
+        decl->CalculateEscapes();
+    }
+    body->CalculateEscapes();
 }
 
 void ArrayExpression::CalculateEscapes()
 {
+    size->CalculateEscapes();
+    init->CalculateEscapes();
 }
 
 void FunctionDeclaration::CalculateEscapes()
 {
+    UseEscapeCalculator()->IncreaseDepth();
+    for (auto& decl : decls)
+    {
+        for (auto& field : decl.fields)
+        {
+            UseEscapeCalculator()->TrackDecl(field.name, &field.escape);
+        }
+        decl.body->CalculateEscapes();
+    }
+    UseEscapeCalculator()->DecreaseDepth();
 }
 
 void VarDeclaration::CalculateEscapes()
 {
-}
-
-void TypeDeclaration::CalculateEscapes()
-{
+    UseEscapeCalculator()->TrackDecl(name, &escape);
+    init->CalculateEscapes();
 }
