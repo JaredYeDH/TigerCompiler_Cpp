@@ -17,6 +17,7 @@ set( test_sources
     EndToEndTests.cpp
     EscapeCalculatorTest.cpp
     TempsTest.cpp
+    FrameTest.cpp
 )
 
 add_executable( AllTests

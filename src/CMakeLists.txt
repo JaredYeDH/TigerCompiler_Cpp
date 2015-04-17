@@ -13,6 +13,7 @@ add_library( FrontEnd
     ErrorCodes.cpp
     EscapeCalculator.cpp
     Temps.cpp
+    Platform_Specific/x86/Frame_x86.cpp # TODO: Fix this makefile
 )
 
 
