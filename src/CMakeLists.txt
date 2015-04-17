@@ -12,7 +12,9 @@ add_library( FrontEnd
     CompileTimeErrorHandler.cpp
     ErrorCodes.cpp
     EscapeCalculator.cpp
+    Temps.cpp
 )
+
 
 add_executable( Main
     Main.cpp
