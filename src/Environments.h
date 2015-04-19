@@ -3,6 +3,7 @@
 #include "common.h"
 #include "Types.h"
 #include "SymbolTable.h"
+#include "Translate.h"
 
 struct EnvEntry
 {
@@ -10,15 +11,18 @@ struct EnvEntry
     virtual Type GetType() const = 0;
     virtual bool IsFunction() const = 0;
     virtual const std::vector<Type>& UseFormals() const = 0;
+    virtual Translate::Access GetAccess() const = 0;
+    virtual std::shared_ptr<const Translate::Level> GetLevel() const = 0;
+    virtual const Temps::Label& UseLabel() const = 0;
 };
 
-struct VarEntry
+class VarEntry
     : public EnvEntry
 {
-    Type type;
-
-    VarEntry(const Type& ty)
+public:
+    VarEntry(const Type& ty, const Translate::Access& acc)
         : type(ty)
+        , access(acc)
     {}
 
     Type GetType() const override
@@ -36,6 +40,21 @@ struct VarEntry
         throw CompilerErrorException("Can't UseFormals for non function");
     }
 
+    Translate::Access GetAccess() const override
+    {
+        return access;
+    }
+
+    std::shared_ptr<const Translate::Level> GetLevel() const override
+    {
+        throw CompilerErrorException("Can't GetLevel for non function");
+    }
+
+    const Temps::Label& UseLabel() const override
+    {
+        throw CompilerErrorException("Can't UseLabel for non function");
+    }
+
     bool operator==(const VarEntry& other)
     {
         return AreEqualTypes(type, other.type);
@@ -44,14 +63,17 @@ struct VarEntry
     {
         return !AreEqualTypes(type, other.type);
     } 
+
+private:
+    Type type;
+    Translate::Access access;
+    VarEntry() = delete;
 };
 
-struct FunEntry
+class FunEntry
     : public EnvEntry
 {
-    std::vector<Type> formals;
-    Type result;
-
+public:
     Type GetType() const override
     {
         return result;
@@ -67,9 +89,26 @@ struct FunEntry
         return formals;
     }
 
-    FunEntry(const std::vector<Type>& forms, const Type& ty)
+    Translate::Access GetAccess() const override
+    {
+        throw CompilerErrorException("Can't GetAccess for function type");
+    }
+
+    std::shared_ptr<const Translate::Level> GetLevel() const override
+    {
+        return m_level;
+    }
+
+    const Temps::Label& UseLabel() const override
+    {
+        return m_label;
+    }
+
+    FunEntry(const std::vector<Type>& forms, const Type& ty, const std::shared_ptr<const Translate::Level>& level, const Temps::Label& label)
         : formals(forms)
         , result(ty)
+        , m_level(level)
+        , m_label(label)
     {}
     
     bool operator==(const FunEntry& other)
@@ -96,6 +135,11 @@ struct FunEntry
     {
         return !(*this == other);
     } 
+private:
+    std::vector<Type> formals;
+    Type result;
+    std::shared_ptr<const Translate::Level> m_level;
+    Temps::Label m_label;
 };
 
 class EnvType

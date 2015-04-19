@@ -2,11 +2,13 @@
 #include <set>
 
 using namespace AST;
+using namespace Translate;
 
 std::shared_ptr<CompileTimeErrorReporter> AstNode::m_errorReporter;
 std::shared_ptr<WarningReporter> AstNode::m_warningReporter;
 uint8_t AstNode::m_loopScope;
 std::shared_ptr<IEscapeCalculator> AstNode::m_escapecalc;
+std::shared_ptr<Level> AstNode::m_currentLevel = std::make_shared<Level>(); // outermost
 
 void AstNode::SetStaticErrorReporters(const std::shared_ptr<CompileTimeErrorReporter>& errReporter, const std::shared_ptr<WarningReporter>& warningReporter)
 {
@@ -70,7 +72,7 @@ Type SimpleVar::TypeCheck()
     {
         ReportTypeError(ErrorCode::Err0, symbol.UseName());
         // error correct
-        ty = std::make_shared<VarEntry>(TypeFactory::MakeIntType());
+        ty = std::make_shared<VarEntry>(TypeFactory::MakeIntType(), UseLevel()->AllocateLocal(false));
     }
     if ((*ty)->IsFunction())
     {
@@ -180,7 +182,7 @@ Type CallExpression::TypeCheck()
     {
         ReportTypeError(ErrorCode::Err5);
         // error correct
-        symTyRaw = std::make_shared<FunEntry>(std::vector<Type>{}, TypeFactory::MakeIntType());
+        symTyRaw = std::make_shared<FunEntry>(std::vector<Type>{}, TypeFactory::MakeIntType(), UseLevel(), Temps::UseTempFactory().MakeLabel());
     }
 
     if (!(*symTyRaw)->IsFunction())
@@ -398,7 +400,7 @@ Type ForExpression::TypeCheck()
     EnterLoopScope();
     {
         bool shadowed;
-        UseValueEnvironment()->Insert(var, std::make_shared<VarEntry>(lTy), shadowed, true /*immutable*/);
+        UseValueEnvironment()->Insert(var, std::make_shared<VarEntry>(lTy, UseLevel()->AllocateLocal(escape)), shadowed, true /*immutable*/);
         if (shadowed)
         {
             std::string err("Shadowing of " + var.UseName());
@@ -497,7 +499,8 @@ Type CheckFunctionDecl(
         const std::shared_ptr<WarningReporter>& warningReporter,
         const std::shared_ptr<ValueEnvironment>& valEnv,
         const std::shared_ptr<TypeEnvironment>& tyEnv,
-        const FunDec& decl)
+        const FunDec& decl,
+        const std::shared_ptr<Level>& level)
 {
     if (!entry.IsFunction())
     {
@@ -513,7 +516,7 @@ Type CheckFunctionDecl(
         const auto& formal = entry.UseFormals()[i];
         bool shadowed;
         auto field = decl.fields[i];
-        valEnv->Insert(field.name, std::make_shared<VarEntry>(formal), shadowed);
+        valEnv->Insert(field.name, std::make_shared<VarEntry>(formal, level->AllocateLocal(field.escape)), shadowed);
         if (shadowed)
         {
             std::string err("Shadowing of " + field.name.UseName());
@@ -555,7 +558,8 @@ std::shared_ptr<FunEntry> GetFunctionDeclHeader(
         const std::shared_ptr<WarningReporter>& warningReporter,
         const std::shared_ptr<ValueEnvironment>& valEnv,
         const std::shared_ptr<TypeEnvironment>& tyEnv,
-        const FunDec& decl)
+        const FunDec& decl,
+        const std::shared_ptr<const Translate::Level>& level)
 {
     Type ty;
     if (decl.resultTy)
@@ -591,7 +595,7 @@ std::shared_ptr<FunEntry> GetFunctionDeclHeader(
     }
 
     // Right now, we have to assume that the given type is valid.
-    return std::make_shared<FunEntry>(formals, ty);
+    return std::make_shared<FunEntry>(formals, ty, level, Temps::UseTempFactory().MakeLabel());
 }
 
 Type FunctionDeclaration::TypeCheck()
@@ -602,7 +606,7 @@ Type FunctionDeclaration::TypeCheck()
     // inital pass to get headers of name type
     for (const auto& decl : decls)
     {
-        std::shared_ptr<FunEntry> fun = GetFunctionDeclHeader(UseErrorReporter(), UseWarningReporter(), UseValueEnvironment(), UseTypeEnvironment(), decl);
+        std::shared_ptr<FunEntry> fun = GetFunctionDeclHeader(UseErrorReporter(), UseWarningReporter(), UseValueEnvironment(), UseTypeEnvironment(), decl, UseLevel());
 
         bool shadowed;
         UseValueEnvironment()->Insert(decl.name, fun, shadowed);
@@ -624,7 +628,7 @@ Type FunctionDeclaration::TypeCheck()
         }
         
         // typecheck for real
-        auto realType = CheckFunctionDecl(*(funEntry->get()), UseErrorReporter(), UseWarningReporter(), UseValueEnvironment(), UseTypeEnvironment(), decl);
+        auto realType = CheckFunctionDecl(*(funEntry->get()), UseErrorReporter(), UseWarningReporter(), UseValueEnvironment(), UseTypeEnvironment(), decl, UseLevel());
         if (!AreEqualTypes(realType, (*funEntry)->GetType()))
         {
             Error err {ErrorCode::Err32, decl.position, ""};
@@ -661,7 +665,7 @@ Type VarDeclaration::TypeCheck()
     }
     
     bool shadowed;
-    UseValueEnvironment()->Insert(name, std::make_shared<VarEntry>(experTy), shadowed);
+    UseValueEnvironment()->Insert(name, std::make_shared<VarEntry>(experTy, UseLevel()->AllocateLocal(escape)), shadowed);
     if (shadowed)
     {
         std::string err("Shadowing of " + name.UseName());

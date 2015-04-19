@@ -11,9 +11,9 @@ const std::vector<Access>& Level::UseFormals() const
 {
     if (m_formals.empty())
     {
-        std::shared_ptr<const Level> level(this);
+        const std::shared_ptr<const Level> level(this);
         auto frameFormals = m_frame->UseFormals();
-        for (const auto formal : frameFormals)
+        for (const auto& formal : frameFormals)
         {
             m_formals.push_back(Access{level, formal});
         }
@@ -27,6 +27,6 @@ Access Level::AllocateLocal(bool escapes)
     {
         throw CompilerErrorException("Uninitialized frame in level. Is this this the outermost level?");
     }
-    std::shared_ptr<Level> level(this);
+    std::shared_ptr<const Level> level(this);
     return Access(level, m_frame->AllocateLocal(escapes));
 }

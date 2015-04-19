@@ -35,25 +35,26 @@ shared_ptr<ValueEnvironment> ValueEnvironment::GenerateBaseValueEnvironment()
 {
     auto valEnv = make_shared<ValueEnvironment>();
     valEnv->BeginScope();
-    auto print = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeStringType()}, TypeFactory::MakeUnitType());
+    std::shared_ptr<Translate::Level> outerLevel = std::make_shared<Translate::Level>();
+    auto print = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeStringType()}, TypeFactory::MakeUnitType(), outerLevel, Temps::UseTempFactory().MakeLabel());
     VerifyAdd(SymbolFactory::GenerateSymbol("print"), print, valEnv);
-    auto flush = make_shared<FunEntry>(vector<Type>{}, TypeFactory::MakeUnitType());
+    auto flush = make_shared<FunEntry>(vector<Type>{}, TypeFactory::MakeUnitType(), outerLevel, Temps::UseTempFactory().MakeLabel());
     VerifyAdd(SymbolFactory::GenerateSymbol("flush"), flush, valEnv);
-    auto getchar = make_shared<FunEntry>(vector<Type>{}, TypeFactory::MakeStringType());
+    auto getchar = make_shared<FunEntry>(vector<Type>{}, TypeFactory::MakeStringType(), outerLevel, Temps::UseTempFactory().MakeLabel());
     VerifyAdd(SymbolFactory::GenerateSymbol("getchar"), getchar, valEnv);
-    auto ord = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeStringType()}, TypeFactory::MakeIntType());
+    auto ord = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeStringType()}, TypeFactory::MakeIntType(), outerLevel, Temps::UseTempFactory().MakeLabel());
     VerifyAdd(SymbolFactory::GenerateSymbol("ord"), ord, valEnv);
-    auto chr = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeIntType()}, TypeFactory::MakeStringType());
+    auto chr = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeIntType()}, TypeFactory::MakeStringType(), outerLevel, Temps::UseTempFactory().MakeLabel());
     VerifyAdd(SymbolFactory::GenerateSymbol("chr"), chr, valEnv);
-    auto size = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeStringType()}, TypeFactory::MakeIntType());
+    auto size = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeStringType()}, TypeFactory::MakeIntType(), outerLevel, Temps::UseTempFactory().MakeLabel());
     VerifyAdd(SymbolFactory::GenerateSymbol("size"), size, valEnv);
-    auto substring = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeStringType(), TypeFactory::MakeIntType(), TypeFactory::MakeIntType()}, TypeFactory::MakeStringType());
+    auto substring = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeStringType(), TypeFactory::MakeIntType(), TypeFactory::MakeIntType()}, TypeFactory::MakeStringType(), outerLevel, Temps::UseTempFactory().MakeLabel());
     VerifyAdd(SymbolFactory::GenerateSymbol("substring"), substring, valEnv);
-    auto concat = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeStringType(), TypeFactory::MakeStringType()}, TypeFactory::MakeStringType());
+    auto concat = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeStringType(), TypeFactory::MakeStringType()}, TypeFactory::MakeStringType(), outerLevel, Temps::UseTempFactory().MakeLabel());
     VerifyAdd(SymbolFactory::GenerateSymbol("concat"), concat, valEnv);
-    auto nott = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeIntType()}, TypeFactory::MakeIntType());
+    auto nott = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeIntType()}, TypeFactory::MakeIntType(), outerLevel, Temps::UseTempFactory().MakeLabel());
     VerifyAdd(SymbolFactory::GenerateSymbol("not"), nott, valEnv);
-    auto exit = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeIntType()}, TypeFactory::MakeUnitType());
+    auto exit = make_shared<FunEntry>(vector<Type>{TypeFactory::MakeIntType()}, TypeFactory::MakeUnitType(), outerLevel, Temps::UseTempFactory().MakeLabel());
     VerifyAdd(SymbolFactory::GenerateSymbol("exit"), exit, valEnv);
     return valEnv;
 }

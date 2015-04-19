@@ -9,10 +9,12 @@ class Level;
 class Access
 {
 public:
-    Access(const std::shared_ptr<const Level>& level, FrameAccess::Access access);
+    Access(const std::shared_ptr<const Level>& level, FrameAccess::Access access)
+        : m_level(level)
+        , m_frameAccess(access) {}
 
 private:
-    const std::shared_ptr<Level> m_level;
+    const std::shared_ptr<const Level> m_level;
     FrameAccess::Access m_frameAccess;
 };
 

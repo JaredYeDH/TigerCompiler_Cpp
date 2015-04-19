@@ -113,7 +113,7 @@ struct AstNode
     {}
 
 protected:
-   virtual const std::shared_ptr<ValueEnvironment>& UseValueEnvironment()
+    virtual const std::shared_ptr<ValueEnvironment>& UseValueEnvironment()
     {
         return m_valueEnvironment;
     }
@@ -131,6 +131,11 @@ protected:
     virtual const std::shared_ptr<IEscapeCalculator>& UseEscapeCalculator() const
     {
         return m_escapecalc;
+    }
+
+    virtual const std::shared_ptr<Translate::Level>& UseLevel() const
+    {
+        return m_currentLevel;
     }
 
     virtual std::shared_ptr<CompileTimeErrorReporter>& UseErrorReporter();
@@ -160,6 +165,7 @@ private:
     static std::shared_ptr<WarningReporter> m_warningReporter;
     static uint8_t m_loopScope;
     static std::shared_ptr<IEscapeCalculator> m_escapecalc;
+    static std::shared_ptr<Translate::Level> m_currentLevel;
 };
 
 struct Expression : public AstNode {};
