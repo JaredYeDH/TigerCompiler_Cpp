@@ -8,7 +8,7 @@ std::shared_ptr<CompileTimeErrorReporter> AstNode::m_errorReporter;
 std::shared_ptr<WarningReporter> AstNode::m_warningReporter;
 uint8_t AstNode::m_loopScope;
 std::shared_ptr<IEscapeCalculator> AstNode::m_escapecalc;
-std::shared_ptr<Level> AstNode::m_currentLevel = std::make_shared<Level>(); // outermost
+std::shared_ptr<Level> AstNode::m_currentLevel;
 
 void AstNode::SetStaticErrorReporters(const std::shared_ptr<CompileTimeErrorReporter>& errReporter, const std::shared_ptr<WarningReporter>& warningReporter)
 {
@@ -59,6 +59,7 @@ std::shared_ptr<WarningReporter>& AstNode::UseWarningReporter()
 Type Program::TypeCheck()
 {
     m_expression->SetEnvironments(m_valueEnvironment, m_typeEnvironment);
+    m_expression->PushLevel(Temps::UseTempFactory().MakeNamedLabel("main"), std::vector<bool>{});
     return m_expression->TypeCheck();
 }
 
@@ -491,6 +492,16 @@ Type ArrayExpression::TypeCheck()
     return (*tyTy)->UseType();
 }
 
+std::vector<bool> FunDec::GetEscapedFormals()
+{
+    std::vector<bool> escaped(fields.size());
+    for (const auto& field : fields)
+    {
+        escaped.push_back(field.escape);
+    }
+    return escaped;
+}
+
 // Will not add the funentry to the environment. This promises to leave the
 // environments as they where when you passed them in when it's done.
 Type FunDec::TypeCheck()
@@ -509,6 +520,8 @@ Type FunDec::TypeCheck()
 
     UseValueEnvironment()->BeginScope();
     UseTypeEnvironment()->BeginScope();
+
+    PushLevel(Temps::UseTempFactory().MakeLabel(), GetEscapedFormals());
 
     // bring all formals into scope
     for (uint32_t i = 0; i < (*funEntry)->UseFormals().size(); ++i)
@@ -546,6 +559,7 @@ Type FunDec::TypeCheck()
         UseErrorReporter()->AddError(err);
     }
 
+    PopLevel();
     UseValueEnvironment()->EndScope();
     UseTypeEnvironment()->EndScope();
 

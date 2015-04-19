@@ -27,6 +27,5 @@ Access Level::AllocateLocal(bool escapes)
     {
         throw CompilerErrorException("Uninitialized frame in level. Is this this the outermost level?");
     }
-    std::shared_ptr<const Level> level(this);
-    return Access(level, m_frame->AllocateLocal(escapes));
+    return Access(shared_from_this(), m_frame->AllocateLocal(escapes));
 }

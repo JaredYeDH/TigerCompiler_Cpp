@@ -31,9 +31,7 @@ Label TempFactory::MakeLabel() const
 
 Label TempFactory::MakeNamedLabel(const char* label) const
 {
-    std::stringstream ss;
-    ss << m_labelPrefix << label << m_labelPostfix;
-    return SymbolFactory::GenerateSymbol(ss.str());
+    return SymbolFactory::GenerateSymbol(label);
 }
 
 const ITempFactory& Temps::UseTempFactory()

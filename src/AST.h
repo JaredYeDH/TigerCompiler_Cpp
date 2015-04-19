@@ -112,6 +112,11 @@ struct AstNode
         : m_position({0,0})
     {}
 
+    virtual void PushLevel(const Temps::Label& label, const std::vector<bool>& formals) 
+    {
+       m_currentLevel = std::make_shared<Translate::Level>(m_currentLevel, label, formals);
+    }
+
 protected:
     virtual const std::shared_ptr<ValueEnvironment>& UseValueEnvironment()
     {
@@ -141,11 +146,6 @@ protected:
     virtual const std::shared_ptr<Translate::Level>& UseParentLevel() const
     {
         return m_currentLevel->GetParent();
-    }
-
-    virtual void PushLevel(const Temps::Label& label, const std::vector<bool>& formals) 
-    {
-       m_currentLevel = std::make_shared<Translate::Level>(m_currentLevel, label, formals);
     }
 
     virtual void PopLevel()
@@ -725,6 +725,8 @@ struct FunDec
     }
 
     std::shared_ptr<FunEntry> CalculateHeader();
+
+    std::vector<bool> GetEscapedFormals();
 
     Type TypeCheck() override;
 

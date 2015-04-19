@@ -19,9 +19,9 @@ private:
 };
 
 class Level
+    : public std::enable_shared_from_this<Level>
 {
 public:
-    Level() : m_isOutermost(true) {}
     Level(const std::shared_ptr<Level>& parent, const Temps::Label& label, const std::vector<bool>& formals);
     const std::vector<Access>& UseFormals() const;
     Access AllocateLocal(bool escapes);
@@ -30,7 +30,6 @@ public:
         return m_parentLevel;
     }
 private:
-    const bool m_isOutermost = false;
     const std::shared_ptr<Level> m_parentLevel;
     std::unique_ptr<FrameAccess::Frame> m_frame;
     mutable std::vector<Access> m_formals;
