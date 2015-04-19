@@ -25,6 +25,10 @@ public:
     Level(const std::shared_ptr<Level>& parent, const Temps::Label& label, const std::vector<bool>& formals);
     const std::vector<Access>& UseFormals() const;
     Access AllocateLocal(bool escapes);
+    const std::shared_ptr<Level>& GetParent()
+    {
+        return m_parentLevel;
+    }
 private:
     const bool m_isOutermost = false;
     const std::shared_ptr<Level> m_parentLevel;

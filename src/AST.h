@@ -138,6 +138,21 @@ protected:
         return m_currentLevel;
     }
 
+    virtual const std::shared_ptr<Translate::Level>& UseParentLevel() const
+    {
+        return m_currentLevel->GetParent();
+    }
+
+    virtual void PushLevel(const Temps::Label& label, const std::vector<bool>& formals) 
+    {
+       m_currentLevel = std::make_shared<Translate::Level>(m_currentLevel, label, formals);
+    }
+
+    virtual void PopLevel()
+    {
+        m_currentLevel = UseParentLevel();
+    }
+
     virtual std::shared_ptr<CompileTimeErrorReporter>& UseErrorReporter();
 
     virtual std::shared_ptr<WarningReporter>& UseWarningReporter();
@@ -692,6 +707,7 @@ struct ArrayExpression
 };
 
 struct FunDec
+    : public AstNode
 {
     Symbol name;
     std::vector<Field> fields;
@@ -708,7 +724,13 @@ struct FunDec
     {
     }
 
-    std::string DumpAST() const
+    std::shared_ptr<FunEntry> CalculateHeader();
+
+    Type TypeCheck() override;
+
+    void CalculateEscapes() override;
+
+    std::string DumpAST() const override
     {
         std::stringstream ss;
         ss << "{FunDec name: " << name.UseName() << " fields: ";

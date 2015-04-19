@@ -493,82 +493,82 @@ Type ArrayExpression::TypeCheck()
 
 // Will not add the funentry to the environment. This promises to leave the
 // environments as they where when you passed them in when it's done.
-Type CheckFunctionDecl(
-        const EnvEntry& entry,
-        const std::shared_ptr<CompileTimeErrorReporter>& errorReporter,
-        const std::shared_ptr<WarningReporter>& warningReporter,
-        const std::shared_ptr<ValueEnvironment>& valEnv,
-        const std::shared_ptr<TypeEnvironment>& tyEnv,
-        const FunDec& decl,
-        const std::shared_ptr<Level>& level)
+Type FunDec::TypeCheck()
 {
-    if (!entry.IsFunction())
+    // lookup in env
+    auto funEntry = UseValueEnvironment()->LookUp(name);
+    if (!funEntry || !*funEntry)
+    {
+        throw CompilerErrorException("Possibly recursive function was not added to environment in header pass");
+    }
+
+    if (!(*funEntry)->IsFunction())
     {
         throw CompilerErrorException("Checking function decl on non function type");
     }
 
-    valEnv->BeginScope();
-    tyEnv->BeginScope();
+    UseValueEnvironment()->BeginScope();
+    UseTypeEnvironment()->BeginScope();
 
     // bring all formals into scope
-    for (uint32_t i = 0; i < entry.UseFormals().size(); ++i)
+    for (uint32_t i = 0; i < (*funEntry)->UseFormals().size(); ++i)
     {
-        const auto& formal = entry.UseFormals()[i];
+        const auto& formal = (*funEntry)->UseFormals()[i];
         bool shadowed;
-        auto field = decl.fields[i];
-        valEnv->Insert(field.name, std::make_shared<VarEntry>(formal, level->AllocateLocal(field.escape)), shadowed);
+        auto field = fields[i];
+        UseValueEnvironment()->Insert(field.name, std::make_shared<VarEntry>(formal, UseLevel()->AllocateLocal(field.escape)), shadowed);
         if (shadowed)
         {
             std::string err("Shadowing of " + field.name.UseName());
-            warningReporter->AddWarning({field.position, err, WarningLevel::Low});
+            UseWarningReporter()->AddWarning({field.position, err, WarningLevel::Low});
         }
     }
 
-    decl.body->SetEnvironments(valEnv, tyEnv);
-    Type actualType = decl.body->TypeCheck();
-    if (decl.resultTy)
+    body->SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
+    Type actualType = body->TypeCheck();
+    if (resultTy)
     {
-        auto resultTy = tyEnv->LookUp(*decl.resultTy);
-        if (!resultTy || !*resultTy)
+        auto actualResultTy = UseTypeEnvironment()->LookUp(*resultTy);
+        if (!actualResultTy || !*actualResultTy)
         {
-            Error err { ErrorCode::Err31, decl.position, ""};
-            errorReporter->AddError(err);
- 
+            Error err { ErrorCode::Err31, position, ""};
+            UseErrorReporter()->AddError(err);
         }
-        if (!AreEqualTypes((*resultTy)->UseType(), actualType))
+        if (!AreEqualTypes((*actualResultTy)->UseType(), actualType))
         {
-            Error err { ErrorCode::Err32, decl.position, ""};
-            errorReporter->AddError(err);
+            Error err { ErrorCode::Err32, position, ""};
+            UseErrorReporter()->AddError(err);
         }
     }
     else if (!AreEqualTypes(TypeFactory::MakeUnitType(), actualType))
     { 
-        Error err { ErrorCode::Err70, decl.position, ""};
-        errorReporter->AddError(err);
+        Error err { ErrorCode::Err70, position, ""};
+        UseErrorReporter()->AddError(err);
     }
 
-    valEnv->EndScope();
-    tyEnv->EndScope();
+    UseValueEnvironment()->EndScope();
+    UseTypeEnvironment()->EndScope();
+
+    if (!AreEqualTypes(actualType, (*funEntry)->GetType()))
+    {
+        Error err {ErrorCode::Err32, position, ""};
+        UseErrorReporter()->AddError(err);
+        // no error correcting here, go with the listed type
+    }
     
     return actualType;
 }
 
-std::shared_ptr<FunEntry> GetFunctionDeclHeader(
-        const std::shared_ptr<CompileTimeErrorReporter>& errorReporter,
-        const std::shared_ptr<WarningReporter>& warningReporter,
-        const std::shared_ptr<ValueEnvironment>& valEnv,
-        const std::shared_ptr<TypeEnvironment>& tyEnv,
-        const FunDec& decl,
-        const std::shared_ptr<const Translate::Level>& level)
+std::shared_ptr<FunEntry> FunDec::CalculateHeader()
 {
     Type ty;
-    if (decl.resultTy)
+    if (resultTy)
     {
-        auto resTy = tyEnv->LookUp(*(decl.resultTy));
+        auto resTy = UseTypeEnvironment()->LookUp(*resultTy);
         if (!resTy)
         {
-            Error err {ErrorCode::Err31, decl.position, ""};
-            errorReporter->AddError(err);
+            Error err {ErrorCode::Err31, position, ""};
+            UseErrorReporter()->AddError(err);
             // error correcting
             ty = TypeFactory::MakeIntType();
         }
@@ -580,13 +580,13 @@ std::shared_ptr<FunEntry> GetFunctionDeclHeader(
     }
 
     std::vector<Type> formals;
-    for (const Field& field : decl.fields)
+    for (const Field& field : fields)
     {
-        auto formalType = tyEnv->LookUp(field.type);
+        auto formalType = UseTypeEnvironment()->LookUp(field.type);
         if (!formalType)
         {
-            Error err { ErrorCode::Err30, decl.position, field.name.UseName()};
-            errorReporter->AddError(err);
+            Error err { ErrorCode::Err30, position, field.name.UseName()};
+            UseErrorReporter()->AddError(err);
             // error correcting
             formalType = std::make_shared<EnvType>(TypeFactory::MakeIntType());
         }
@@ -595,7 +595,7 @@ std::shared_ptr<FunEntry> GetFunctionDeclHeader(
     }
 
     // Right now, we have to assume that the given type is valid.
-    return std::make_shared<FunEntry>(formals, ty, level, Temps::UseTempFactory().MakeLabel());
+    return std::make_shared<FunEntry>(formals, ty, UseLevel(), Temps::UseTempFactory().MakeLabel());
 }
 
 Type FunctionDeclaration::TypeCheck()
@@ -604,9 +604,10 @@ Type FunctionDeclaration::TypeCheck()
     assert(UseTypeEnvironment());
 
     // inital pass to get headers of name type
-    for (const auto& decl : decls)
+    for (auto& decl : decls)
     {
-        std::shared_ptr<FunEntry> fun = GetFunctionDeclHeader(UseErrorReporter(), UseWarningReporter(), UseValueEnvironment(), UseTypeEnvironment(), decl, UseLevel());
+        decl.SetEnvironments(UseValueEnvironment(), UseTypeEnvironment());
+        std::shared_ptr<FunEntry> fun = decl.CalculateHeader();
 
         bool shadowed;
         UseValueEnvironment()->Insert(decl.name, fun, shadowed);
@@ -618,23 +619,9 @@ Type FunctionDeclaration::TypeCheck()
     }
 
     // second pass for checking bodies
-    for (const auto& decl : decls)
+    for (auto& decl : decls)
     {
-        // lookup in env
-        auto funEntry = UseValueEnvironment()->LookUp(decl.name);
-        if (!funEntry || !*funEntry)
-        {
-            throw CompilerErrorException("Possibly recursive function was not added to environment in header pass");
-        }
-        
-        // typecheck for real
-        auto realType = CheckFunctionDecl(*(funEntry->get()), UseErrorReporter(), UseWarningReporter(), UseValueEnvironment(), UseTypeEnvironment(), decl, UseLevel());
-        if (!AreEqualTypes(realType, (*funEntry)->GetType()))
-        {
-            Error err {ErrorCode::Err32, decl.position, ""};
-            UseErrorReporter()->AddError(err);
-            // no error correcting here, go with the listed type
-        }
+        decl.TypeCheck();
     }
     return TypeFactory::MakeUnitType();
 }
@@ -885,16 +872,21 @@ void ArrayExpression::CalculateEscapes()
     init->CalculateEscapes();
 }
 
+void FunDec::CalculateEscapes()
+{
+    for (auto& field : fields)
+    {
+        UseEscapeCalculator()->TrackDecl(field.name, &field.escape);
+    }
+    body->CalculateEscapes();
+}
+
 void FunctionDeclaration::CalculateEscapes()
 {
     UseEscapeCalculator()->IncreaseDepth();
     for (auto& decl : decls)
     {
-        for (auto& field : decl.fields)
-        {
-            UseEscapeCalculator()->TrackDecl(field.name, &field.escape);
-        }
-        decl.body->CalculateEscapes();
+        decl.CalculateEscapes();
     }
     UseEscapeCalculator()->DecreaseDepth();
 }
