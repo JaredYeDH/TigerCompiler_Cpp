@@ -18,6 +18,7 @@ set( test_sources
     EscapeCalculatorTest.cpp
     TempsTest.cpp
     FrameTest.cpp
+    AccessTest.cpp
 )
 
 add_executable( AllTests

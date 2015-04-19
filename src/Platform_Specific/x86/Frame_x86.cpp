@@ -4,46 +4,8 @@
 #include "boost/variant.hpp"
 
 using namespace Temps;
+using namespace FrameAccess;
 using namespace std;
-
-enum class Register : uint8_t
-{
-    EAX,
-    EBX,
-    ECX,
-    EDX,
-    ESI,
-    EDI
-    // ESP and EBP are explicitly absent, this are
-    // not registers that we should be using for access
-};
-
-class OffsetFromBasePointer
-{
-public:
-    OffsetFromBasePointer(int16_t offset)
-        : m_offset(offset)
-    {
-    }
-
-    int16_t GetOffset() const
-    {
-        return m_offset;
-    }
-private:
-    int16_t m_offset;
-};
-
-typedef boost::variant<
-    OffsetFromBasePointer
-  , Register
-> AccessVariant;
-
-class Access
-{
-public:
-    AccessVariant m_access;
-};
 
 class X86Frame
     : public Frame
@@ -65,7 +27,10 @@ public:
         return m_formals;
     }
 
-    Access AllocateLocal(bool escapes) override { throw 1; }
+    Access AllocateLocal(bool escapes) override
+    {
+        throw CompilerErrorException("AllocateLocal not yet implemented");
+    }
 
 private:
     void CalculateFormals(const vector<bool>& formals)
@@ -74,12 +39,11 @@ private:
         {
             throw CompilerErrorException("Formals should have not been populated");
         }
-        int16_t offset = 8; // following c-calling conventions first argument will be at ebp+8
+        int32_t offset = 8; // following c-calling conventions first argument will be at ebp+8
         for (bool formal : formals)
         {
             // all arguments live on the stack and the escape is immaterial
-            Access access{AccessVariant{OffsetFromBasePointer{offset}}};
-            m_formals.push_back(access);
+            m_formals.push_back(Access{offset});
             offset += 4;
             // START NONSENSE (to silence warnings)
             formal = !!formal;

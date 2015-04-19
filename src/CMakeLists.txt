@@ -14,6 +14,7 @@ add_library( FrontEnd
     EscapeCalculator.cpp
     Temps.cpp
     Platform_Specific/x86/Frame_x86.cpp # TODO: Fix this makefile
+    Translate.cpp
 )
 
 
