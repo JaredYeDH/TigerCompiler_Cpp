@@ -9,7 +9,16 @@ Level::Level(const std::shared_ptr<Level>& parent, const Temps::Label& label, co
 
 const std::vector<Access>& Level::UseFormals() const
 {
-    throw CompilerErrorException("Not implemented");
+    if (m_formals.empty())
+    {
+        std::shared_ptr<const Level> level(this);
+        auto frameFormals = m_frame->UseFormals();
+        for (const auto formal : frameFormals)
+        {
+            m_formals.push_back(Access{level, formal});
+        }
+    }
+    return m_formals;
 }
 
 Access Level::AllocateLocal(bool escapes)
@@ -21,4 +30,3 @@ Access Level::AllocateLocal(bool escapes)
     std::shared_ptr<Level> level(this);
     return Access(level, m_frame->AllocateLocal(escapes));
 }
-

@@ -9,7 +9,7 @@ class Level;
 class Access
 {
 public:
-    Access(const std::shared_ptr<Level>& level, FrameAccess::Access access);
+    Access(const std::shared_ptr<const Level>& level, FrameAccess::Access access);
 
 private:
     const std::shared_ptr<Level> m_level;
@@ -27,6 +27,7 @@ private:
     const bool m_isOutermost = false;
     const std::shared_ptr<Level> m_parentLevel;
     std::unique_ptr<FrameAccess::Frame> m_frame;
+    mutable std::vector<Access> m_formals;
 };
 
 }
