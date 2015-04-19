@@ -1,12 +1,48 @@
 #include "Frame.h"
 
 #include "common.h"
+#include "boost/variant.hpp"
 
 using namespace Temps;
 using namespace std;
 
+enum class Register : uint8_t
+{
+    EAX,
+    EBX,
+    ECX,
+    EDX,
+    ESI,
+    EDI
+    // ESP and EBP are explicitly absent, this are
+    // not registers that we should be using for access
+};
+
+class OffsetFromBasePointer
+{
+public:
+    OffsetFromBasePointer(int16_t offset)
+        : m_offset(offset)
+    {
+    }
+
+    int16_t GetOffset() const
+    {
+        return m_offset;
+    }
+private:
+    int16_t m_offset;
+};
+
+typedef boost::variant<
+    OffsetFromBasePointer
+  , Register
+> AccessVariant;
+
 class Access
 {
+public:
+    AccessVariant m_access;
 };
 
 class X86Frame
@@ -15,20 +51,44 @@ class X86Frame
 public:
     X86Frame(const Label& name, const vector<bool>& formals)
         : m_label(name)
-        , m_formals(formals)
-    { /* empty */ }
+    {
+        CalculateFormals(formals);
+    }
 
-    Temps::Label GetName() override
+    Temps::Label GetName() const override
     {
         return m_label;
     }
 
-    const std::vector<Access>& UseFormals() override { throw 1; }
+    const std::vector<Access>& UseFormals() const override
+    {
+        return m_formals;
+    }
+
     Access AllocateLocal(bool escapes) override { throw 1; }
 
 private:
+    void CalculateFormals(const vector<bool>& formals)
+    {
+        if (!m_formals.empty())
+        {
+            throw CompilerErrorException("Formals should have not been populated");
+        }
+        int16_t offset = 8; // following c-calling conventions first argument will be at ebp+8
+        for (bool formal : formals)
+        {
+            // all arguments live on the stack and the escape is immaterial
+            Access access{AccessVariant{OffsetFromBasePointer{offset}}};
+            m_formals.push_back(access);
+            offset += 4;
+            // START NONSENSE (to silence warnings)
+            formal = !!formal;
+            // END NONSENSE
+        }
+    }
+
     Label m_label;
-    vector<bool> m_formals;
+    vector<Access> m_formals;
 };
 
 std::unique_ptr<Frame> FrameFactory::MakeFrame(const Temps::Label& name, const std::vector<bool>& formals)

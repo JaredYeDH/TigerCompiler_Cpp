@@ -6,8 +6,8 @@ class Access;
 class Frame
 {
 public:
-    virtual Temps::Label GetName() = 0;
-    virtual const std::vector<Access>& UseFormals() = 0;
+    virtual Temps::Label GetName() const = 0;
+    virtual const std::vector<Access>& UseFormals() const = 0;
     virtual Access AllocateLocal(bool escapes) = 0;
 };
 
