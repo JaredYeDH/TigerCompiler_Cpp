@@ -114,7 +114,7 @@ struct AstNode
 
     virtual void PushLevel(const Temps::Label& label, const std::vector<bool>& formals) 
     {
-       m_currentLevel = std::make_shared<Translate::Level>(m_currentLevel, label, formals);
+       m_currentLevel = NewLevel(m_currentLevel, label, formals);
     }
 
 protected:
@@ -138,12 +138,12 @@ protected:
         return m_escapecalc;
     }
 
-    virtual const std::shared_ptr<Translate::Level>& UseLevel() const
+    virtual const std::shared_ptr<Translate::ILevel>& UseLevel() const
     {
         return m_currentLevel;
     }
 
-    virtual const std::shared_ptr<Translate::Level>& UseParentLevel() const
+    virtual const std::shared_ptr<Translate::ILevel>& UseParentLevel() const
     {
         return m_currentLevel->GetParent();
     }
@@ -180,7 +180,7 @@ private:
     static std::shared_ptr<WarningReporter> m_warningReporter;
     static uint8_t m_loopScope;
     static std::shared_ptr<IEscapeCalculator> m_escapecalc;
-    static std::shared_ptr<Translate::Level> m_currentLevel;
+    static std::shared_ptr<Translate::ILevel> m_currentLevel;
 };
 
 struct Expression : public AstNode {};

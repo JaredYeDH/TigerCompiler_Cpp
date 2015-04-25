@@ -2,7 +2,34 @@
 
 using namespace Translate;
 
-Level::Level(const std::shared_ptr<Level>& parent, const Temps::Label& label, const std::vector<bool>& formals)
+class Level
+    : public ILevel
+    , public std::enable_shared_from_this<Level>
+{
+public:
+    Level(const std::shared_ptr<ILevel>& parent, const Temps::Label& label, const std::vector<bool>& formals);
+
+    const std::vector<Access>& UseFormals() const override;
+    Access AllocateLocal(bool escapes) override;
+    const std::shared_ptr<ILevel>& GetParent() const override
+    {
+        return m_parentLevel;
+    }
+
+private:
+    const std::shared_ptr<ILevel> m_parentLevel;
+    std::unique_ptr<FrameAccess::Frame> m_frame;
+    mutable std::vector<Access> m_formals;
+};
+
+std::shared_ptr<ILevel> Translate::NewLevel(const std::shared_ptr<ILevel>& parent, const Temps::Label& label, const std::vector<bool>& formals)
+{
+    std::vector<bool> formalsWithStaticLink{formals};
+    formalsWithStaticLink.push_back(true);
+    return std::make_shared<Level>(parent, label, formalsWithStaticLink);
+}
+
+Level::Level(const std::shared_ptr<ILevel>& parent, const Temps::Label& label, const std::vector<bool>& formals)
     : m_parentLevel(parent)
     , m_frame(FrameAccess::FrameFactory::MakeFrame(label, formals))
 {}
@@ -11,11 +38,10 @@ const std::vector<Access>& Level::UseFormals() const
 {
     if (m_formals.empty())
     {
-        const std::shared_ptr<const Level> level(this);
         auto frameFormals = m_frame->UseFormals();
         for (const auto& formal : frameFormals)
         {
-            m_formals.push_back(Access{level, formal});
+            m_formals.push_back(Access{shared_from_this(), formal});
         }
     }
     return m_formals;

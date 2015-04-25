@@ -4,35 +4,28 @@
 namespace Translate
 {
 
-class Level;
+class ILevel;
 
 class Access
 {
 public:
-    Access(const std::shared_ptr<const Level>& level, FrameAccess::Access access)
+    Access(const std::shared_ptr<const ILevel>& level, FrameAccess::Access access)
         : m_level(level)
         , m_frameAccess(access) {}
 
 private:
-    const std::shared_ptr<const Level> m_level;
+    const std::shared_ptr<const ILevel> m_level;
     FrameAccess::Access m_frameAccess;
 };
 
-class Level
-    : public std::enable_shared_from_this<Level>
+class ILevel
 {
 public:
-    Level(const std::shared_ptr<Level>& parent, const Temps::Label& label, const std::vector<bool>& formals);
-    const std::vector<Access>& UseFormals() const;
-    Access AllocateLocal(bool escapes);
-    const std::shared_ptr<Level>& GetParent()
-    {
-        return m_parentLevel;
-    }
-private:
-    const std::shared_ptr<Level> m_parentLevel;
-    std::unique_ptr<FrameAccess::Frame> m_frame;
-    mutable std::vector<Access> m_formals;
+    virtual const std::vector<Access>& UseFormals() const = 0;
+    virtual Access AllocateLocal(bool escapes) = 0;
+    virtual const std::shared_ptr<ILevel>& GetParent() const = 0;
 };
+
+std::shared_ptr<ILevel> NewLevel(const std::shared_ptr<ILevel>& parent, const Temps::Label& label, const std::vector<bool>& formals);
 
 }

@@ -12,7 +12,7 @@ struct EnvEntry
     virtual bool IsFunction() const = 0;
     virtual const std::vector<Type>& UseFormals() const = 0;
     virtual Translate::Access GetAccess() const = 0;
-    virtual std::shared_ptr<const Translate::Level> GetLevel() const = 0;
+    virtual std::shared_ptr<const Translate::ILevel> GetLevel() const = 0;
     virtual const Temps::Label& UseLabel() const = 0;
 };
 
@@ -45,7 +45,7 @@ public:
         return access;
     }
 
-    std::shared_ptr<const Translate::Level> GetLevel() const override
+    std::shared_ptr<const Translate::ILevel> GetLevel() const override
     {
         throw CompilerErrorException("Can't GetLevel for non function");
     }
@@ -94,7 +94,7 @@ public:
         throw CompilerErrorException("Can't GetAccess for function type");
     }
 
-    std::shared_ptr<const Translate::Level> GetLevel() const override
+    std::shared_ptr<const Translate::ILevel> GetLevel() const override
     {
         return m_level;
     }
@@ -104,7 +104,7 @@ public:
         return m_label;
     }
 
-    FunEntry(const std::vector<Type>& forms, const Type& ty, const std::shared_ptr<const Translate::Level>& level, const Temps::Label& label)
+    FunEntry(const std::vector<Type>& forms, const Type& ty, const std::shared_ptr<const Translate::ILevel>& level, const Temps::Label& label)
         : formals(forms)
         , result(ty)
         , m_level(level)
@@ -138,7 +138,7 @@ public:
 private:
     std::vector<Type> formals;
     Type result;
-    std::shared_ptr<const Translate::Level> m_level;
+    std::shared_ptr<const Translate::ILevel> m_level;
     Temps::Label m_label;
 };
 

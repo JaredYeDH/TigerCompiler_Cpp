@@ -8,7 +8,7 @@ std::shared_ptr<CompileTimeErrorReporter> AstNode::m_errorReporter;
 std::shared_ptr<WarningReporter> AstNode::m_warningReporter;
 uint8_t AstNode::m_loopScope;
 std::shared_ptr<IEscapeCalculator> AstNode::m_escapecalc;
-std::shared_ptr<Level> AstNode::m_currentLevel;
+std::shared_ptr<ILevel> AstNode::m_currentLevel;
 
 void AstNode::SetStaticErrorReporters(const std::shared_ptr<CompileTimeErrorReporter>& errReporter, const std::shared_ptr<WarningReporter>& warningReporter)
 {
