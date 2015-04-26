@@ -43,7 +43,7 @@ void EscapeCalculator::EscapeIfNecessary(const Symbol& symbol)
     auto var = m_escapeTable.LookUp(symbol);
     if (!var)
     {
-        throw CompilerErrorException("Simple vars should be entered into escape table");
+        throw SemanticAnalysisException("Simple vars should be entered into escape table");
     }
 
     if (var->first < m_depth)

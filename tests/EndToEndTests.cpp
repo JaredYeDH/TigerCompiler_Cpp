@@ -113,7 +113,11 @@ public:
 				try
 				{
 					auto prog = parser.Parse();
-                    prog->TypeCheck();
+                    if (!errorReporter->HasAnyErrors())
+                    {
+                        prog->CalculateEscapes();
+                        prog->TypeCheck();
+                    }
 				}
 				catch (const std::exception& t)
 				{

@@ -792,18 +792,29 @@ Type ArrayType::TypeCheck()
 
 void SimpleVar::CalculateEscapes()
 {
-    UseEscapeCalculator()->EscapeIfNecessary(symbol);    
+    try
+    {
+        UseEscapeCalculator()->EscapeIfNecessary(symbol);
+    }
+    catch(const SemanticAnalysisException& e)
+    {
+        Error err { ErrorCode::Err0, UsePosition(), "" };
+        UseErrorReporter()->AddError(err);
+    }
+    catch (...)
+    {
+        throw;
+    }
 }
 
 void FieldVar::CalculateEscapes()
 {
-    UseEscapeCalculator()->EscapeIfNecessary(symbol);
+    var->CalculateEscapes();
 }
 
 void SubscriptVar::CalculateEscapes()
 {
     var->CalculateEscapes();
-    expression->CalculateEscapes();
 }
 
 void VarExpression::CalculateEscapes()
@@ -865,7 +876,7 @@ void WhileExpression::CalculateEscapes()
 
 void ForExpression::CalculateEscapes()
 {
-    // TODO: how does a forexpression escape?
+    UseEscapeCalculator()->TrackDecl(var, &escape);
     low->CalculateEscapes();
     high->CalculateEscapes();
     body->CalculateEscapes();
