@@ -18,17 +18,18 @@ add_library( FrontEnd
 )
 
 
-add_executable( Main
+add_executable( Tiger
+    Compiler.cpp
     Main.cpp
 )
 
-target_link_libraries( Main
+target_link_libraries( Tiger
     FrontEnd
     ${Boost_LIBRARIES}
 )
 
 add_custom_command(
-     TARGET Main
+     TARGET Tiger
      POST_BUILD
      COMMAND AllTests
 )
