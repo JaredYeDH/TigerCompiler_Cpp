@@ -15,6 +15,7 @@ add_library( FrontEnd
     Temps.cpp
     Platform_Specific/x86/Frame_x86.cpp # TODO: Fix this makefile
     Translate.cpp
+    TreeIR.cpp
 )
 
 
