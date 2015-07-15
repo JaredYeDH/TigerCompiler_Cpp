@@ -1,7 +1,7 @@
-New CPP project template
+Tiger CPP
 ========================
 
-A simple c++ project template using cmake and googletest.  
+A (currently incomplete) implementation of a compiler for the [Tiger programming language](http://www.cs.princeton.edu/~appel/modern/ml/) written in C++.
 
 Usage
 --------
